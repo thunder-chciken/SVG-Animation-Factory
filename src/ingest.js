@@ -73,6 +73,24 @@ export function loadSVG(src, name = 'untitled.svg') {
   toast(`Indexed ${S.items.length} elements`, 'ok');
 }
 
+/* A blank artboard you can actually put things on.
+
+   "New" used to only empty the stage, which left no <svg> at all — so the
+   text tool, and anything else that needs somewhere to draw, had nothing to
+   attach to and refused. A new document is a real, empty SVG. */
+export function newDocument({ w = 1200, h = 800, bg = '', name = 'untitled.svg' } = {}) {
+  const rect = bg
+    ? `\n  <rect id="background" x="0" y="0" width="${w}" height="${h}" fill="${bg}"/>`
+    : '';
+  const src = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}">${rect}\n</svg>`;
+  if (!mountSVG(src, name)) return false;
+  buildTimeline();
+  renderAll();
+  markDirty();
+  toast(`New ${w} × ${h} document`, 'ok');
+  return true;
+}
+
 export function clearStage() {
   S.svg = null; S.raw = ''; S.fileName = '';
   S.items = []; S.byUid.clear(); S.sel.clear();

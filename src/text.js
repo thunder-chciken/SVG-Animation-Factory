@@ -15,7 +15,7 @@
    be guaranteed identical everywhere.
    ===================================================================== */
 import { S, $, NS, esc, round, clamp, toast, markDirty } from './state.js';
-import { reindex } from './ingest.js';
+import { reindex, newDocument } from './ingest.js';
 import { selectedRecs, select } from './selection.js';
 import { renderAll } from './render.js';
 import { rebuild } from './timeline.js';
@@ -76,7 +76,11 @@ function styleText(el, d, x, y) {
 }
 
 function addText() {
-  if (!S.svg) { toast('Open or create a document first.', 'err'); return; }
+  // No artboard yet? Make one rather than refusing — wanting to type is a
+  // perfectly clear signal that a document is wanted too.
+  if (!S.svg && !newDocument({ w: 1200, h: 800, name: 'untitled.svg' })) {
+    toast('Could not create a document.', 'err'); return;
+  }
   const d = draft;
   if (!d.size) d.size = defaultSize();
   const lines = d.content.split('\n').filter(l => l.trim().length);

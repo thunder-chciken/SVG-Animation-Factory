@@ -137,7 +137,7 @@ Everything lives under **File** in the top bar:
 
 | Item | What it does |
 |---|---|
-| New… | Empties the stage and starts a fresh project |
+| New… | Creates a blank artboard — pick a size preset or type your own, with an optional background fill |
 | Open… | Opens an `.svg` or a `.saf.json` project |
 | Export as ▸ | PNG at 2x or 4x, JPEG at 2x, or the code export sheet |
 | Open Recent ▸ | The last eight projects, stored locally and openable offline |

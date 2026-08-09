@@ -11,7 +11,7 @@
    ===================================================================== */
 import { S, $, esc, toast } from './state.js';
 import { serialize, openProjectText, clearSession, flushSession } from './project.js';
-import { loadSVG, clearStage } from './ingest.js';
+import { loadSVG, clearStage, newDocument } from './ingest.js';
 import { resetHistory } from './history.js';
 import { exportRaster } from './raster.js';
 import { openExport } from './export/index.js';
@@ -193,6 +193,63 @@ function open() {
   $('#btnFile').classList.add('on');
 }
 
+/* ---------------------------------------------------------------------
+   New document
+   --------------------------------------------------------------------- */
+const SIZES = [
+  [1920, 1080, 'HD 1920 × 1080'],
+  [1080, 1080, 'Square 1080'],
+  [1080, 1920, 'Story 1080 × 1920'],
+  [1200, 630, 'Social 1200 × 630'],
+  [1200, 800, 'Canvas 1200 × 800'],
+  [512, 512, 'Icon 512'],
+];
+
+const nd = { w: 1200, h: 800, bg: '' };
+
+function renderNew() {
+  $('#newBody').innerHTML = `
+    <div class="newsizes">
+      ${SIZES.map(([w, h, label]) =>
+        `<button class="newsize ${nd.w === w && nd.h === h ? 'on' : ''}" data-nw="${w}" data-nh="${h}">
+           ${esc(label)}<small>${w} × ${h}</small></button>`).join('')}
+    </div>
+    <div class="ctl" style="margin-top:10px"><label>Width</label>
+      <input type="number" id="ndW" min="1" step="1" value="${nd.w}">
+      <span class="hint">px</span></div>
+    <div class="ctl"><label>Height</label>
+      <input type="number" id="ndH" min="1" step="1" value="${nd.h}">
+      <span class="hint">px</span></div>
+    <div class="ctl"><label>Background</label>
+      <input type="color" id="ndBg" value="${nd.bg || '#ffffff'}" ${nd.bg ? '' : 'disabled'}>
+      <label class="hint" style="display:flex;gap:5px;align-items:center">
+        <input type="checkbox" id="ndBgOn" ${nd.bg ? 'checked' : ''}> fill</label></div>
+    <p class="hint" style="margin:2px 0 10px">Leave the fill off for a transparent artboard —
+      usually what you want for a logo or an icon.</p>
+    <button class="btn pri" id="ndCreate" style="width:100%">Create document</button>`;
+
+  $('#newBody').querySelectorAll('[data-nw]').forEach(b => b.onclick = () => {
+    nd.w = +b.dataset.nw; nd.h = +b.dataset.nh; renderNew();
+  });
+  $('#ndW').oninput = e => { nd.w = Math.max(1, parseInt(e.target.value, 10) || 1); };
+  $('#ndH').oninput = e => { nd.h = Math.max(1, parseInt(e.target.value, 10) || 1); };
+  $('#ndBgOn').onchange = e => { nd.bg = e.target.checked ? ($('#ndBg').value || '#ffffff') : ''; renderNew(); };
+  $('#ndBg').oninput = e => { nd.bg = e.target.value; };
+  $('#ndCreate').onclick = () => {
+    $('#newModal').classList.remove('on');
+    clearSession();
+    fileHandle = null;
+    newDocument({ w: nd.w, h: nd.h, bg: nd.bg, name: 'untitled.svg' });
+    resetHistory();
+  };
+}
+
+export function openNewDialog() {
+  renderNew();
+  $('#newModal').classList.add('on');
+  $('#ndW')?.focus();
+}
+
 function blankDocument(msg) {
   clearStage();
   clearSession();
@@ -204,7 +261,7 @@ function blankDocument(msg) {
 const ACTIONS = {
   new: () => {
     if (S.svg && !confirm('Start a new project? Anything unsaved will be lost.')) return;
-    blankDocument('New project');
+    openNewDialog();
   },
   open: () => $('#menuFile').click(),
   png2: () => exportRaster('png', 2),
@@ -245,6 +302,9 @@ export function bindMenu() {
   });
 
   $('#menuFile').onchange = e => { openFromFile(e.target.files[0]); e.target.value = ''; };
+
+  $('#newCancel').onclick = () => $('#newModal').classList.remove('on');
+  $('#newModal').onclick = e => { if (e.target.id === 'newModal') $('#newModal').classList.remove('on'); };
 
   document.addEventListener('click', e => {
     if (!e.target.closest('#fileMenu') && !e.target.closest('#btnFile')) close();
