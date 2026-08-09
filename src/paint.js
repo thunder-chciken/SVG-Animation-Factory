@@ -299,9 +299,15 @@ export function openPaint(x, y) {
   loadPaint(); renderPaint();
   pop.classList.add('on');
   const w = pop.offsetWidth || 286, h = pop.offsetHeight || 320;
-  const px = x == null ? (innerWidth - w - 360) : clamp(x + 14, 8, innerWidth - w - 8);
-  const py = y == null ? 90 : clamp(y - 30, 8, innerHeight - h - 8);
-  pop.style.left = px + 'px'; pop.style.top = py + 'px';
+  // Guard the upper bounds: on a short window the panel is taller than the
+  // room below the click, and clamp(v, 8, negative) returns the negative —
+  // which parked the whole picker above the top of the screen.
+  const maxLeft = Math.max(8, innerWidth - w - 8);
+  const maxTop = Math.max(8, innerHeight - h - 8);
+  const px = x == null ? maxLeft - 352 : clamp(x + 14, 8, maxLeft);
+  const py = y == null ? 90 : clamp(y - 30, 8, maxTop);
+  pop.style.left = Math.max(8, px) + 'px';
+  pop.style.top = py + 'px';
 }
 
 export function bindPaintShell() {

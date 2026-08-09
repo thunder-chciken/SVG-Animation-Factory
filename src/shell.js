@@ -12,6 +12,8 @@ import { openExport, setActiveTab, currentTab } from './export/index.js';
 import { downloadProject, openProjectText, clearSession, flushSession } from './project.js';
 import { undo, redo, canUndo, canRedo, onHistoryChange, resetHistory } from './history.js';
 import { openIcons } from './icons.js';
+import { resetWorkspace } from './workspace.js';
+import { applyWorkspaceOpen } from './ui.js';
 import { SAMPLE } from './sample.js';
 
 export function bindTop() {
@@ -81,6 +83,7 @@ export function bindTop() {
     clearStage(); clearSession(); resetHistory();
     toast('Cleared');
   };
+  $('#btnResetPanels').onclick = () => { resetWorkspace(); applyWorkspaceOpen(); renderAll(); };
   $('#btnSaveProj').onclick = downloadProject;
   $('#btnOpenProj').onclick = () => $('#projFile').click();
   $('#projFile').onchange = e => {

@@ -2,13 +2,26 @@
    library. Kept apart from inspector.js so presets.js can use sect()
    without the two importing each other. */
 import { S, esc } from './state.js';
+import { WS, saveWorkspace } from './workspace.js';
 
-export const OPEN_SECT = new Set(['presets', 'timing', 'pos', 'look']);
+export const OPEN_SECT = new Set(WS.open);
+
+/* Module initialisers run before main.js gets to loadWorkspace(), so the set
+   above starts from the defaults. Called once the stored layout is in. */
+export function applyWorkspaceOpen() {
+  OPEN_SECT.clear();
+  WS.open.forEach(id => OPEN_SECT.add(id));
+}
+
+export function syncOpenToWorkspace() {
+  WS.open = [...OPEN_SECT];
+  saveWorkspace();
+}
 
 export function sect(id, title, inner) {
   const open = OPEN_SECT.has(id);
   return `<div class="sect ${open ? '' : 'closed'}" data-sect="${id}">
-    <div class="shead"><span class="ar">▼</span>${esc(title)}</div>
+    <div class="shead" title="Drag to reorder"><span class="grip6">⠿</span><span class="ar">▼</span>${esc(title)}</div>
     <div class="sbody">${inner}</div></div>`;
 }
 

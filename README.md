@@ -14,8 +14,10 @@ colour in the file becomes a swatch you can click to select all its users at onc
 The tree is ordered front-most first, the way Photoshop and Illustrator do it, and
 rows drag to restack — dropping one above another puts it in front.
 
-**Select** — click, shift-click to add, or drag from empty canvas to rubber-band a
-group of shapes. Whatever is selected is what a preset applies to.
+**Select** — click a shape, **shift-click** to add or remove more, or drag from empty
+canvas to rubber-band a group. Whatever is selected is what a preset applies to, and a
+preset always starts a new lane for the current selection. Drag a shape to move it;
+**hold Shift mid-drag** to lock it to a straight rail (see below).
 
 **Paint** — double-click anything on the canvas for an HSV colour wheel: hue ring
 outside, saturation/value square inside, with a hex field and eyedropper alongside.
@@ -50,10 +52,15 @@ want a sequence. The ruler has its own zoom — it grows to fit but never shrink
 own, so shortening the longest clip is something you can actually see. **Fit** pulls it
 back in.
 
-**Looping** — the ↻ button opens loop settings for the composition as a whole: on/off,
-how many cycles (or forever), a pause between them, and ping-pong. Separate from a
-single lane's own repeat, and carried into the GSAP, HTML, WordPress and Animated SVG
-exports.
+**Looping** — a **Looping (global)** section in the inspector: on/off, how many cycles
+(or forever), a pause between them, and ping-pong. The ↻ button in the transport is a
+quick on/off that also jumps to the section. Separate from a single lane's own repeat,
+and carried into the GSAP, HTML, WordPress and Animated SVG exports.
+
+**Panels** — drag any inspector section by its header to reorder it, and it stays that
+way. Panel order and which sections are open persist per browser, independently of the
+project, so opening a different file keeps your layout. **Reset panels** restores the
+default arrangement.
 
 **Undo** — `Ctrl+Z` / `Ctrl+Shift+Z` across everything: clips, paint, splits, moves and
 icon inserts. Steps are coalesced per gesture, so dragging a slider is one undo, not forty.
@@ -100,6 +107,40 @@ build command and output directory, and adds long-lived caching for hashed asset
   trigger setting and hidden-element flag. Element ids are preserved inside it, so
   reopening a project keeps each clip pointed at the right shapes.
 
+## This does not have to stay a static site
+
+Nothing here is locked into being "just HTML". It is a Vite app deployed on Vercel,
+which means a backend is an additive step, not a rewrite — add an `api/` directory and
+those files become serverless functions on the same domain, same deploy, same git push.
+The client-side-only decision was made deliberately for v1 to ship fast and cost nothing
+to run; none of it forecloses the following.
+
+**Accounts and cloud projects.** Vercel Postgres + an auth provider, with `src/project.js`
+already the single choke point for persistence — it talks to `localStorage` behind
+`serialize()` / `applyProject()`, so putting an API adapter behind that interface is a
+contained change rather than a refactor. Projects would sync across machines instead of
+living in one browser.
+
+**Shareable links and review.** Store a project server-side, hand out
+`/p/<id>` for a read-only animated preview. Turns "email them an SVG" into a URL, and
+opens the door to comments and version history.
+
+**Server-side rendering of exports.** The one thing the browser genuinely cannot do well:
+render an animation to **MP4, GIF, or Lottie**. A serverless function running headless
+Chrome plus ffmpeg can play the GSAP timeline and capture frames. This is the single
+biggest capability gap today, since social platforms and ad networks want video, not SVG.
+
+**A team asset library.** Blob storage for shared logos, brand palettes and reusable
+presets, so a studio builds a kit once and everyone animates from it.
+
+**Batch and API.** Feed a directory of icons through one preset, or expose
+`POST /api/animate` so a build pipeline can generate animations from CI.
+
+Practical notes if you go this way: Vercel functions have an execution ceiling, so video
+rendering wants a queue plus a longer-running worker rather than a plain request; and
+adding auth means the privacy promise in the header of this README has to be rewritten
+honestly, because artwork would then leave the browser.
+
 ## Layout
 
 ```
@@ -121,6 +162,7 @@ src/
   timeline.js         clip list → live GSAP timeline
   transport.js        playback controls, lanes, bar dragging, ruler zoom
   history.js          snapshot undo/redo
+  workspace.js        panel order and open state
   icons.js            Iconify search and insertion
   wheel.js            HSV colour wheel
   filters.js          CSS filter functions shared with the exporters
@@ -139,6 +181,8 @@ hoisted function bindings. Keep it that way: put new wiring in `main.js`.
 
 | Key | Action |
 |---|---|
+| `Shift` + click | Add / remove from the selection |
+| `Shift` during a drag | Lock movement to a straight rail |
 | `Ctrl Z` | Undo |
 | `Ctrl Shift Z` / `Ctrl Y` | Redo |
 | `Space` | Play / pause |
@@ -151,7 +195,7 @@ hoisted function bindings. Keep it that way: put new wiring in `main.js`.
 | `Ctrl E` | Export |
 | `Ctrl S` | Save project file |
 
-Drag on the canvas to move elements (`Shift` locks to an axis); double-click to paint.
+Drag on the canvas to move elements; double-click one to paint it.
 In the icon browser, hold `Shift` while clicking to insert several without closing.
 
 ## Notes
@@ -174,6 +218,16 @@ In the icon browser, hold `Shift` while clicking to insert several without closi
   inline styles and the `transform` attribute, so cloning mid-preview would bake that
   frame in — harmless in the GSAP exports, which overwrite it immediately, but fatal in
   the SMIL file, whose animations add to whatever base state they find.
+- Shift-drag is a projection onto one fixed vector, not angle snapping. The rail is
+  established from the direction the drag was already travelling and never recomputed
+  while Shift is held, so there are no 45-degree increments and no direction flips.
+  Engaging anchors the rail at the element's current position and releasing banks the
+  difference into an offset, so neither transition produces a jump.
+- A modifier held at pointer-down is a selection gesture and arms no drag. Without that,
+  a few stray pixels while shift-clicking shoved the whole selection across the canvas.
+- Pointer capture is taken only once a press becomes a real drag. Capturing on every
+  press retargets the follow-up mouse events — including `dblclick` — at the stage
+  container, and double-click-to-paint stops resolving a shape.
 - Paint writes an inline style, not just a presentation attribute. A `<style>` class
   rule outranks a presentation attribute, and Illustrator and Figma both export fills
   that way — setting only the attribute leaves the shape visibly unchanged.

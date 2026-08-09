@@ -1,9 +1,25 @@
 /* ============================================================
    Right panel — collapsible sections, property rows, presets.
    ============================================================ */
+#inspector{position:relative}
+#sectDrop{position:absolute;left:0;right:0;height:2px;background:var(--amber);display:none;
+  z-index:6;pointer-events:none;box-shadow:0 0 7px rgba(255,176,32,.85)}
+#sectDrop::before{content:'';position:absolute;left:0;top:-3px;width:8px;height:8px;
+  border-radius:50%;background:var(--amber)}
+
 .sect{border-bottom:1px solid var(--line)}
-.shead{display:flex;align-items:center;gap:6px;padding:7px 10px;cursor:pointer;background:var(--panel2);
-  font:10px/1 var(--mono);letter-spacing:.11em;text-transform:uppercase;color:var(--dim);user-select:none}
+.sect.dragging{opacity:.5}
+.sect.flash{animation:sectflash 0.9s ease-out}
+@keyframes sectflash{
+  0%{background:rgba(255,176,32,.22)}
+  100%{background:transparent}
+}
+.shead{display:flex;align-items:center;gap:6px;padding:7px 10px;cursor:grab;background:var(--panel2);
+  font:10px/1 var(--mono);letter-spacing:.11em;text-transform:uppercase;color:var(--dim);user-select:none;
+  touch-action:none}
+.shead:active{cursor:grabbing}
+.shead .grip6{color:var(--dimmer);font-size:11px;line-height:1;letter-spacing:0;opacity:.5}
+.shead:hover .grip6{opacity:1;color:var(--amber)}
 .shead:hover{color:var(--text)}
 .shead .ar{font-size:8px;color:var(--dimmer);transition:transform .15s}
 .sect.closed .ar{transform:rotate(-90deg)}

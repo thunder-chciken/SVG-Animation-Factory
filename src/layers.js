@@ -115,6 +115,10 @@ function showIndicator(hit) {
 
 function beginLayerDrag(e) {
   if (e.button !== 0) return;
+  // Shift / Ctrl / Cmd are selection modifiers here. Arming a restack on them
+  // meant a few stray pixels while shift-clicking reordered the artwork
+  // instead of extending the selection.
+  if (e.shiftKey || e.metaKey || e.ctrlKey) return;
   const row = e.target.closest('.layer');
   if (!row || e.target.closest('[data-eye]')) return;
   LDRAG = { uid: row.dataset.uid, row, y0: e.clientY, moved: false, hit: null };

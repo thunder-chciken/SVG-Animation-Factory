@@ -1,14 +1,54 @@
 /* =====================================================================
    INSPECTOR — the right-hand panel and everything wired inside it
    ===================================================================== */
-import { S, $, esc, toast, markDirty } from './state.js';
-import { OPEN_SECT, sect, ctlRow, propRow } from './ui.js';
+import { S, $, esc, round, clamp, toast, markDirty } from './state.js';
+import { OPEN_SECT, sect, ctlRow, propRow, syncOpenToWorkspace } from './ui.js';
+import { WS, moveSection, resetWorkspace } from './workspace.js';
+import { syncLoopUI } from './transport.js';
 import { SCHEMA, EASES, EASE_DIR, newClip } from './schema.js';
 import { presetsSection, applyPreset } from './presets.js';
 import { selectedRecs } from './selection.js';
 import { rebuild, playFrom } from './timeline.js';
 import { renderTracks } from './transport.js';
 import { renderAll } from './render.js';
+
+/* Looping the whole composition. Lives here rather than only behind the
+   transport button — this is where every other setting is, so it is where
+   people look for it. */
+function loopSection() {
+  const lc = S.loopCfg;
+  const off = lc.on ? '' : 'disabled';
+  return sect('loop', 'Looping (global)' + (lc.on ? '' : ' · off'), `
+    <div class="ctl wide"><label>Loop</label>
+      <label class="hint" style="display:flex;gap:6px;align-items:center">
+        <input type="checkbox" id="loopOn" ${lc.on ? 'checked' : ''}> repeat the whole animation</label></div>
+    <div class="ctl"><label>Times</label>
+      <select id="loopCount" ${off}>
+        ${[[-1, 'forever'], [1, '2×'], [2, '3×'], [4, '5×'], [9, '10×'], [19, '20×']].map(([v, l]) =>
+          `<option value="${v}" ${lc.count === v ? 'selected' : ''}>${l}</option>`).join('')}
+      </select><span class="hint">cycles</span></div>
+    <div class="ctl"><label>Pause between</label>
+      <input type="range" id="loopDelayR" min="0" max="5" step="0.05" value="${lc.delay}" ${off}>
+      <input type="number" id="loopDelayN" min="0" max="5" step="0.05" value="${lc.delay}" ${off}></div>
+    <div class="ctl wide"><label>Ping-pong</label>
+      <label class="hint" style="display:flex;gap:6px;align-items:center">
+        <input type="checkbox" id="loopYoyo" ${lc.yoyo ? 'checked' : ''} ${off}> play backwards on alternate cycles</label></div>
+    <p class="hint" style="margin-top:6px">Applies to the whole timeline. A single lane can still
+      repeat on its own under <b>Timing &amp; easing</b>. Carried into the GSAP, Standalone HTML,
+      WordPress and Animated SVG exports.</p>`);
+}
+
+/* Open the Looping section and scroll it into view. The transport button
+   calls this so the settings are one click from the control people press. */
+export function revealLoopSection() {
+  OPEN_SECT.add('loop');
+  syncOpenToWorkspace();
+  renderInspector();
+  const el = document.querySelector('#inspector .sect[data-sect="loop"]');
+  el?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  el?.classList.add('flash');
+  setTimeout(() => el?.classList.remove('flash'), 900);
+}
 
 export function renderInspector() {
   const box = $('#inspector');
@@ -41,14 +81,20 @@ export function renderInspector() {
     <p class="hint">Targets ${clip.targets.length} element${clip.targets.length > 1 ? 's' : ''}.</p>` : ''}
   </div></div>`;
 
+  /* Sections are built into a map and emitted in the workspace order, so
+     they can be dragged into whatever arrangement suits the work. */
+  const parts = {};
+  parts.presets = presetsSection();
+  parts.loop = loopSection();
+
+  const emit = ids => ids.map(id => parts[id] || '').join('');
+
   if (!clip) {
     html += `<div class="empty-note">No clip selected.<br>Select elements and press
       <b>+ Animate selection</b>, or pick a preset below.</div>`;
-    html += presetsSection();
+    html += emit(WS.order.filter(id => id === 'presets' || id === 'loop'));
     box.innerHTML = html; bindInspector(); return;
   }
-
-  html += presetsSection();
 
   /* slider target toggle */
   html += `<div class="sect"><div class="sbody">
@@ -65,7 +111,7 @@ export function renderInspector() {
 
   /* timing */
   const t = clip.timing;
-  html += sect('timing', 'Timing & easing', `
+  parts.timing = sect('timing', 'Timing & easing', `
     ${ctlRow('Duration', 'duration', t.duration, 0, 10, .01, 's')}
     ${ctlRow('Delay', 'delay', t.delay, 0, 10, .01, 's')}
     <div class="ctl"><label>Ease</label>
@@ -95,7 +141,7 @@ export function renderInspector() {
 
   /* stagger */
   const st = clip.stagger;
-  html += sect('stagger', 'Stagger (multi-element)', `
+  parts.stagger = sect('stagger', 'Stagger (multi-element)', `
     ${ctlRow('Total spread', 'stAmount', st.amount, 0, 5, .01, 's')}
     <div class="ctl"><label>Start from</label>
       <select data-s="from">${['start', 'center', 'end', 'edges', 'random'].map(v =>
@@ -116,7 +162,7 @@ export function renderInspector() {
 
   /* transform origin */
   const org = clip.props.__origin || (clip.props.__origin = { on: false, from: '50% 50%', to: '50% 50%' });
-  html += sect('origin', 'Transform origin', `
+  parts.origin = sect('origin', 'Transform origin', `
     <div class="row">
       <div class="origin" id="originGrid">
         ${['0% 0%', '50% 0%', '100% 0%', '0% 50%', '50% 50%', '100% 50%', '0% 100%', '50% 100%', '100% 100%']
@@ -135,13 +181,13 @@ export function renderInspector() {
   SCHEMA.forEach(g => {
     const rows = g.props.map(p => propRow(clip, p)).join('');
     const active = g.props.filter(p => clip.props[p.k].on).length;
-    html += sect(g.id, g.title + (active ? ` · ${active}` : ''), rows);
+    parts[g.id] = sect(g.id, g.title + (active ? ` · ${active}` : ''), rows);
   });
 
   /* motion path */
   const pathOpts = S.items.filter(i => i.tag === 'path' || i.tag === 'line' || i.tag === 'polyline')
     .map(i => `<option value="${i.uid}" ${clip.motionPath === i.uid ? 'selected' : ''}>${esc(i.label)}</option>`).join('');
-  html += sect('mp', 'Travel along a path', `
+  parts.mp = sect('mp', 'Travel along a path', `
     <div class="ctl"><label>Path</label>
       <select id="mpSel"><option value="">— none —</option>${pathOpts}</select>
       <span class="hint">guide</span></div>
@@ -156,7 +202,7 @@ export function renderInspector() {
 
   /* trigger */
   const tg = S.trigger;
-  html += sect('trig', 'Playback trigger (global)', `
+  parts.trig = sect('trig', 'Playback trigger (global)', `
     <div class="ctl"><label>Fires on</label>
       <select id="trMode">
         ${[['load', 'Page load'], ['scroll', 'Scroll into view'], ['scrub', 'Scroll scrub'],
@@ -177,19 +223,116 @@ export function renderInspector() {
           <input type="checkbox" id="trMarkers" ${tg.markers ? 'checked' : ''}> markers</label>
       </div></div>`);
 
+  html += emit(WS.order);
   box.innerHTML = html;
   bindInspector();
 }
+
+/* ---------------------------------------------------------------------
+   Drag a section header to move that panel up or down. The header also
+   toggles the section open, so a gesture only counts as a reorder once it
+   has travelled far enough to be unambiguous.
+   --------------------------------------------------------------------- */
+let SDRAG = null;
+let SECT_DRAGGED = false;
+
+function sectDropIndicator() {
+  let el = $('#sectDrop');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'sectDrop';
+    $('#inspector').appendChild(el);
+  }
+  return el;
+}
+
+function sectionUnder(y) {
+  const list = [...document.querySelectorAll('#inspector .sect[data-sect]')];
+  for (const s of list) {
+    const b = s.getBoundingClientRect();
+    if (y >= b.top && y <= b.bottom) return { sect: s, before: y < b.top + b.height / 2 };
+  }
+  if (!list.length) return null;
+  const first = list[0].getBoundingClientRect();
+  if (y < first.top) return { sect: list[0], before: true };
+  return { sect: list[list.length - 1], before: false };
+}
+
+function bindSectionDrag(box) {
+  box.querySelectorAll('.sect[data-sect] > .shead').forEach(head => {
+    head.addEventListener('pointerdown', e => {
+      if (e.button !== 0) return;
+      SDRAG = { id: head.parentNode.dataset.sect, y0: e.clientY, moved: false, hit: null };
+      SECT_DRAGGED = false;
+    });
+  });
+}
+
+function moveSectionDrag(e) {
+  if (!SDRAG) return;
+  if (!SDRAG.moved) {
+    if (Math.abs(e.clientY - SDRAG.y0) < 6) return;
+    SDRAG.moved = true;
+    document.body.style.cursor = 'grabbing';
+    document.querySelector(`#inspector .sect[data-sect="${SDRAG.id}"]`)?.classList.add('dragging');
+  }
+  const panel = $('#inspector');
+  const pb = panel.getBoundingClientRect();
+  if (e.clientY < pb.top + 26) panel.scrollTop -= 10;
+  else if (e.clientY > pb.bottom - 26) panel.scrollTop += 10;
+
+  const hit = sectionUnder(e.clientY);
+  SDRAG.hit = hit && hit.sect.dataset.sect !== SDRAG.id ? hit : null;
+  const ind = sectDropIndicator();
+  if (!SDRAG.hit) { ind.style.display = 'none'; return; }
+  const b = SDRAG.hit.sect.getBoundingClientRect();
+  ind.style.display = 'block';
+  ind.style.top = ((SDRAG.hit.before ? b.top : b.bottom) - pb.top + panel.scrollTop - 1) + 'px';
+}
+
+function endSectionDrag() {
+  if (!SDRAG) return;
+  const { id, moved, hit } = SDRAG;
+  SDRAG = null;
+  document.body.style.cursor = '';
+  sectDropIndicator().style.display = 'none';
+  document.querySelector('#inspector .sect.dragging')?.classList.remove('dragging');
+  if (!moved || !hit) return;
+  SECT_DRAGGED = true;                       // swallow the click that follows
+  if (moveSection(id, hit.sect.dataset.sect, hit.before)) renderInspector();
+  setTimeout(() => { SECT_DRAGGED = false; }, 0);
+}
+
+window.addEventListener('pointermove', moveSectionDrag);
+window.addEventListener('pointerup', endSectionDrag);
+window.addEventListener('pointercancel', endSectionDrag);
 
 function bindInspector() {
   const box = $('#inspector');
   const clip = S.clips.find(c => c.id === S.activeClip);
 
   box.querySelectorAll('.shead').forEach(h => h.onclick = () => {
+    if (SECT_DRAGGED) return;              // the gesture was a reorder, not a toggle
     const s = h.parentNode, id = s.dataset.sect;
     s.classList.toggle('closed');
     s.classList.contains('closed') ? OPEN_SECT.delete(id) : OPEN_SECT.add(id);
+    syncOpenToWorkspace();
   });
+  bindSectionDrag(box);
+
+  /* loop settings — global, so they bind whether or not a clip is active */
+  const lc = S.loopCfg;
+  const loopChanged = () => { syncLoopUI(); rebuild(true); markDirty(); renderInspector(); };
+  const lOn = $('#loopOn'); if (lOn) lOn.onchange = e => { lc.on = e.target.checked; loopChanged(); };
+  const lCount = $('#loopCount'); if (lCount) lCount.onchange = e => { lc.count = parseInt(e.target.value, 10); loopChanged(); };
+  const lYoyo = $('#loopYoyo'); if (lYoyo) lYoyo.onchange = e => { lc.yoyo = e.target.checked; loopChanged(); };
+  const setDelay = v => {
+    lc.delay = clamp(parseFloat(v) || 0, 0, 5);
+    $('#loopDelayR').value = lc.delay; $('#loopDelayN').value = lc.delay;
+    syncLoopUI(); rebuild(true); markDirty();
+  };
+  const lDr = $('#loopDelayR'); if (lDr) lDr.oninput = e => setDelay(e.target.value);
+  const lDn = $('#loopDelayN'); if (lDn) lDn.oninput = e => setDelay(e.target.value);
   const add = $('#addClip'); if (add) add.onclick = () => {
     const c = newClip([...S.sel]); S.clips.push(c); S.activeClip = c.id;
     rebuild(); renderAll();

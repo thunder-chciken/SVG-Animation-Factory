@@ -30,6 +30,7 @@
     <input type="file" id="projFile" accept=".json,.saf.json,application/json" hidden>
     <span class="spacer"></span>
     <span class="tag" id="stat">no file</span>
+    <button class="btn sm" id="btnResetPanels" title="Restore the default panel layout">Reset panels</button>
     <button class="btn sm" id="btnReset">Reset all</button>
     <button class="btn sm pri" id="btnExport">Export code</button>
   </div>
@@ -165,33 +166,6 @@
     hold <kbd>Shift</kbd> to insert several without closing. Each icon keeps the licence of its
     set — shown on hover.</p>
 </div></div>
-
-<div class="pop" id="loopPop">
-  <header id="loopDrag"><b>Loop</b><span class="spacer"></span>
-    <span class="x" id="loopClose">✕</span></header>
-  <div class="pbody2">
-    <div class="ctl wide"><label>Repeat</label>
-      <label class="hint" style="display:flex;gap:6px;align-items:center">
-        <input type="checkbox" id="loopOn"> loop the whole animation</label></div>
-    <div class="ctl"><label>Times</label>
-      <select id="loopCount">
-        <option value="-1">forever</option>
-        <option value="1">2× (once more)</option>
-        <option value="2">3×</option>
-        <option value="4">5×</option>
-        <option value="9">10×</option>
-      </select><span class="hint">cycles</span></div>
-    <div class="ctl"><label>Pause between</label>
-      <input type="range" id="loopDelayR" min="0" max="5" step="0.05" value="0">
-      <input type="number" id="loopDelayN" min="0" max="5" step="0.05" value="0"></div>
-    <div class="ctl wide"><label>Ping-pong</label>
-      <label class="hint" style="display:flex;gap:6px;align-items:center">
-        <input type="checkbox" id="loopYoyo"> play backwards on alternate cycles</label></div>
-    <p class="hint" style="margin-top:8px">Applies to the whole timeline. A single lane can
-      still repeat on its own under <b>Timing &amp; easing</b>. Carried into the GSAP,
-      Standalone HTML, WordPress and Animated SVG exports.</p>
-  </div>
-</div>
 
 <div class="pop" id="paint">
   <header id="paintDrag"><b>Paint</b><span class="tag" id="paintCount"></span>

@@ -16,7 +16,13 @@ import { bindTop } from './shell.js';
 import { bindIcons } from './icons.js';
 import { initPersistence, restoreSession } from './project.js';
 import { initHistory, resetHistory } from './history.js';
+import { loadWorkspace } from './workspace.js';
+import { applyWorkspaceOpen } from './ui.js';
 import { SAMPLE } from './sample.js';
+
+// Panel layout first: the inspector reads it the first time it renders.
+loadWorkspace();
+applyWorkspaceOpen();
 
 bindStage();
 bindLayers();

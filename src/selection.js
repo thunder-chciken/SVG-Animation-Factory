@@ -1,5 +1,5 @@
 /* =====================================================================
-   SELECTION + STAGE OVERLAY
+   SELECTION + STAGE OVERLAY + DRAGGING
    ===================================================================== */
 import { S, $, NS, round, toast, markDirty } from './state.js';
 import { renderLayers, highlightLayer } from './layers.js';
@@ -108,10 +108,12 @@ export function descendants(uid) {
 
 let DRAG = null;
 let BAND = null;
+let lastPick = null;   // fallback target for dblclick, see bindStage
 
-/* Rubber-band select. Dragging from empty canvas used to do nothing at all,
-   which reads as "I can't select more than one thing" — the gesture every
-   canvas app answers with a marquee. Shift keeps the existing selection. */
+/* ---------------------------------------------------------------------
+   Rubber-band select. Dragging from empty canvas used to do nothing at
+   all, which reads as "I can't select more than one thing".
+   --------------------------------------------------------------------- */
 function bandRect() {
   let el = $('#marquee');
   if (!el) {
@@ -136,11 +138,6 @@ function moveBand(e) {
   const x = Math.min(BAND.x0, e.clientX), y = Math.min(BAND.y0, e.clientY);
   const w = Math.abs(e.clientX - BAND.x0), h = Math.abs(e.clientY - BAND.y0);
 
-  const r = bandRect();
-  r.setAttribute('x', x - wrap.x); r.setAttribute('y', y - wrap.y);
-  r.setAttribute('width', w); r.setAttribute('height', h);
-
-  // anything the band touches, in screen space so it matches what is drawn
   const box = { left: x, top: y, right: x + w, bottom: y + h };
   const hits = S.items.filter(it => {
     if (it.kind === 'group' || !it.node.isConnected) return false;
@@ -151,11 +148,10 @@ function moveBand(e) {
 
   S.sel = new Set(BAND.add ? [...BAND.base, ...hits] : hits);
   renderLayers(); renderInspector();
-  // redraw the band last — renderOverlay() clears the overlay
-  renderOverlay();
-  const r2 = bandRect();
-  r2.setAttribute('x', x - wrap.x); r2.setAttribute('y', y - wrap.y);
-  r2.setAttribute('width', w); r2.setAttribute('height', h);
+  renderOverlay();               // clears the overlay, so redraw the band after
+  const r = bandRect();
+  r.setAttribute('x', x - wrap.x); r.setAttribute('y', y - wrap.y);
+  r.setAttribute('width', w); r.setAttribute('height', h);
 }
 
 function endBand() {
@@ -167,10 +163,89 @@ function endBand() {
 }
 
 function pickAt(e) {
-  const rec = recFromNode(e.target);
+  let rec = recFromNode(e.target);
+  // Pointer capture (and anything else that retargets an event) can hand us
+  // the stage container instead of the shape. Fall back to hit-testing the
+  // actual coordinates before giving up.
+  if (!rec && e.clientX != null) {
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    if (under) rec = recFromNode(under);
+  }
   if (!rec) return null;
   if (S.tool === 'group') { let p = rec; while (p.parentUid) p = S.byUid.get(p.parentUid); return p; }
   return rec;
+}
+
+/* ---------------------------------------------------------------------
+   SHIFT-CONSTRAINED DRAGGING — the straight rail.
+
+   Holding Shift locks movement to a single straight line through the
+   point where Shift was pressed, running along the direction the drag was
+   already travelling. The element slides forward and backward along that
+   line and nowhere else. This is a projection onto one fixed vector, not
+   angle snapping: there are no 45-degree increments and no preferred
+   directions, and the line never changes while Shift stays down.
+
+   Both transitions are seamless. Engaging Shift anchors the rail at the
+   element's current position, so t starts at zero and nothing moves.
+   Releasing Shift banks the difference between where the element sits and
+   where the pointer is into an offset, so free dragging resumes 1:1 from
+   exactly where the element already is. Neither edge produces a jump.
+   --------------------------------------------------------------------- */
+const RAIL_MIN = 2;        // user units of travel needed to trust a direction
+const DRAG_START = 3;      // screen px before a press becomes a drag
+
+function applyDrag(clientX, clientY, shift) {
+  if (!DRAG || !DRAG.moved || !DRAG.wraps) return;
+
+  const k = userScale();
+  const rawX = (clientX - DRAG.x0) / k;
+  const rawY = (clientY - DRAG.y0) / k;
+
+  // Remember which way the pointer is actually travelling. Used to seed the
+  // rail when Shift is pressed while the pointer sits near its start point.
+  const mdx = rawX - DRAG.prevRawX, mdy = rawY - DRAG.prevRawY;
+  const step = Math.hypot(mdx, mdy);
+  if (step > 0.4) { DRAG.dirX = mdx / step; DRAG.dirY = mdy / step; }
+  DRAG.prevRawX = rawX; DRAG.prevRawY = rawY;
+
+  let appX, appY;
+
+  if (shift) {
+    if (!DRAG.rail) {
+      // Establish the rail once, from the direction the drag has taken so
+      // far, and never recompute it while Shift stays down.
+      let ux, uy;
+      const len = Math.hypot(rawX, rawY);
+      if (len >= RAIL_MIN) { ux = rawX / len; uy = rawY / len; }
+      else if (DRAG.dirX || DRAG.dirY) { ux = DRAG.dirX; uy = DRAG.dirY; }
+      else { ux = 1; uy = 0; }
+      DRAG.rail = { ux, uy, rawX, rawY, appX: DRAG.appX, appY: DRAG.appY };
+    }
+    const r = DRAG.rail;
+    // signed distance along the rail — negative simply means backwards
+    const t = (rawX - r.rawX) * r.ux + (rawY - r.rawY) * r.uy;
+    appX = r.appX + r.ux * t;
+    appY = r.appY + r.uy * t;
+  } else {
+    if (DRAG.rail) {
+      // Leaving the rail: bank the gap so the element does not snap to the
+      // pointer. It carries on from exactly where it is.
+      DRAG.offX = DRAG.appX - rawX;
+      DRAG.offY = DRAG.appY - rawY;
+      DRAG.rail = null;
+    }
+    appX = rawX + DRAG.offX;
+    appY = rawY + DRAG.offY;
+  }
+
+  DRAG.appX = appX; DRAG.appY = appY;
+  DRAG.wraps.forEach(w => setOffset(w.g, w.base.x + appX, w.base.y + appY));
+  renderOverlay();
+
+  $('#stat').textContent = DRAG.rail
+    ? `Δ ${round(appX, 1)}, ${round(appY, 1)} · locked`
+    : `Δ ${round(appX, 1)}, ${round(appY, 1)}`;
 }
 
 export function bindStage() {
@@ -182,18 +257,43 @@ export function bindStage() {
     if (!target) {
       if (!e.shiftKey) select([]);
       beginBand(e);
-      try { stage.setPointerCapture(e.pointerId); } catch (err) { /* capture is a nicety */ }
       return;
     }
+    lastPick = target;
     const kids = target.kind === 'group' && S.tool === 'group'
       ? descendants(target.uid).concat([target.uid]) : [target.uid];
-    // clicking outside the current selection re-selects before the drag starts
-    const inSel = kids.every(u => S.sel.has(u));
-    if (!inSel || e.shiftKey || e.metaKey || e.ctrlKey)
-      select(kids, { add: e.shiftKey, toggle: e.metaKey || e.ctrlKey });
 
-    DRAG = { x0: e.clientX, y0: e.clientY, moved: false, wraps: null, lock: null };
-    stage.setPointerCapture(e.pointerId);
+    /* A modifier held at press time is a selection gesture, full stop —
+       shift adds to (or removes from) the selection, and no drag is armed.
+       Two reasons: a few stray pixels while shift-clicking used to shove the
+       whole selection across the canvas instead of selecting, and the rail
+       constraint is defined as Shift pressed *during* a drag, so Shift at
+       press time is unambiguous. */
+    if (e.shiftKey || e.metaKey || e.ctrlKey) {
+      select(kids, { toggle: true, add: true });
+      const n = S.sel.size;
+      toast(n ? `${n} selected` : 'Nothing selected');
+      return;
+    }
+
+    // clicking outside the current selection re-selects before the drag starts
+    if (!kids.every(u => S.sel.has(u))) select(kids);
+
+    DRAG = {
+      x0: e.clientX, y0: e.clientY,
+      pointerId: e.pointerId,
+      moved: false, wraps: null,
+      appX: 0, appY: 0,          // where the element currently sits
+      offX: 0, offY: 0,          // compensation banked when leaving the rail
+      prevRawX: 0, prevRawY: 0,
+      dirX: 0, dirY: 0,          // recent travel direction
+      rail: null,
+      lastX: e.clientX, lastY: e.clientY,
+    };
+    // Capture is deliberately NOT taken here. Taking it on every press
+    // retargets the follow-up mouse events — including dblclick — at the
+    // stage container, and double-click-to-paint stops resolving a shape.
+    // It is taken below, once the press is genuinely a drag.
   });
 
   stage.addEventListener('pointermove', e => {
@@ -204,41 +304,55 @@ export function bindStage() {
       if (u !== S.hot) { S.hot = u; renderOverlay(); highlightLayer(u); }
       return;
     }
-    const dxS = e.clientX - DRAG.x0, dyS = e.clientY - DRAG.y0;
+
+    DRAG.lastX = e.clientX; DRAG.lastY = e.clientY;
+
     if (!DRAG.moved) {
-      if (Math.hypot(dxS, dyS) < 3) return;
+      if (Math.hypot(e.clientX - DRAG.x0, e.clientY - DRAG.y0) < DRAG_START) return;
       DRAG.moved = true;
       stage.style.cursor = 'grabbing';
+      try { stage.setPointerCapture(e.pointerId); } catch (err) { /* capture is a nicety */ }
       DRAG.wraps = topSel().map(r => {
         const g = moveWrap(r.node);
         return { g, base: wrapOffset(g) };
       });
       if (!DRAG.wraps.length) { DRAG = null; stage.style.cursor = ''; return; }
     }
-    const k = userScale();
-    let dx = dxS / k, dy = dyS / k;
-    if (e.shiftKey) {                       // axis lock
-      if (Math.abs(dxS) > Math.abs(dyS)) dy = 0; else dx = 0;
-    }
-    DRAG.wraps.forEach(w => setOffset(w.g, w.base.x + dx, w.base.y + dy));
-    renderOverlay();
-    $('#stat').textContent = `Δ ${round(dx, 1)}, ${round(dy, 1)}`;
+
+    applyDrag(e.clientX, e.clientY, e.shiftKey);
   });
+
+  /* Shift pressed or released without moving the mouse still has to take
+     effect immediately, so the key itself re-runs the transform against the
+     last known pointer position. This is what makes it feel magnetic
+     instead of waiting for the next mouse move. */
+  const onShiftKey = e => {
+    if (e.key !== 'Shift' || !DRAG || !DRAG.moved) return;
+    applyDrag(DRAG.lastX, DRAG.lastY, e.type === 'keydown');
+  };
+  window.addEventListener('keydown', onShiftKey);
+  window.addEventListener('keyup', onShiftKey);
 
   const endDrag = () => {
     if (BAND) { endBand(); return; }
     if (!DRAG) return;
-    const moved = DRAG.moved; DRAG = null;
+    const moved = DRAG.moved;
+    DRAG = null;
     stage.style.cursor = '';
     if (moved) { $('#stat').textContent = S.fileName; renderOverlay(); markDirty(); }
   };
   stage.addEventListener('pointerup', endDrag);
   stage.addEventListener('pointercancel', endDrag);
   stage.addEventListener('mouseleave', () => { S.hot = null; renderOverlay(); highlightLayer(null); });
+
   stage.addEventListener('dblclick', e => {
-    const rec = pickAt(e); if (!rec) return;
+    // pickAt hit-tests the coordinates when the event target is unhelpful;
+    // lastPick covers the remaining case where even that comes back empty.
+    const rec = pickAt(e) || lastPick;
+    if (!rec || !rec.node.isConnected) return;
     if (!S.sel.has(rec.uid)) select([rec.uid]);
     openPaint(e.clientX, e.clientY);
   });
+
   window.addEventListener('resize', () => renderOverlay());
 }
