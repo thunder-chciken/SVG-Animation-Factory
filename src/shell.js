@@ -13,6 +13,8 @@ import { openProjectText, flushSession } from './project.js';
 import { saveProject } from './menu.js';
 import { undo, redo, canUndo, canRedo, onHistoryChange, resetHistory } from './history.js';
 import { openIcons } from './icons.js';
+import { openText } from './text.js';
+import { isPanning } from './viewport.js';
 import { resetWorkspace } from './workspace.js';
 import { applyWorkspaceOpen } from './ui.js';
 import { SAMPLE } from './sample.js';
@@ -124,6 +126,7 @@ export function bindTop() {
   $('#btnPaint').onclick = () => openPaint();
   $('#btnResetPos').onclick = resetPositions;
   $('#btnDelete').onclick = deleteSelected;
+  $('#btnText').onclick = openText;
 
   /* ---------- keyboard ---------- */
   document.addEventListener('keydown', e => {
@@ -138,11 +141,12 @@ export function bindTop() {
     if (mod && key === 'y') { e.preventDefault(); redo(); return; }
 
     if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
-    if (e.key === ' ') { e.preventDefault(); $('#tPlay').click(); }
+    if (e.key === ' ') { e.preventDefault(); if (!isPanning()) $('#tPlay').click(); }
     if (e.key === 'Escape') {
       select([]);
       $('#modal').classList.remove('on');
       $('#iconModal').classList.remove('on');
+      $('#textPop').classList.remove('on');
     }
     if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
@@ -159,6 +163,7 @@ export function bindTop() {
     }
     if (e.key === 'p' || e.key === 'P') { e.preventDefault(); openPaint(); }
     if (key === 'i' && !mod) { e.preventDefault(); openIcons(); }
+    if (key === 't' && !mod) { e.preventDefault(); openText(); }
     if (mod && key === 'a') { e.preventDefault(); select(S.items.map(i => i.uid)); }
     if (mod && key === 'e') { e.preventDefault(); openExport(); }
     if (mod && key === 's') { e.preventDefault(); saveProject({ as: e.shiftKey }); }

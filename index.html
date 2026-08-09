@@ -74,6 +74,7 @@
         <button class="btn sm" id="btnSelAll">All</button>
         <button class="btn sm" id="btnSelNone">None</button>
         <button class="btn sm" id="btnSelInv">Invert</button>
+        <button class="btn sm" id="btnText" title="Add or edit text (T)">Text</button>
         <button class="btn sm danger" id="btnDelete" title="Delete the selection (Del)">Delete</button>
         <span style="width:1px;height:20px;background:var(--line)"></span>
         <button class="btn sm" id="btnSplitText" title="Break live text into one element per character">Split letters</button>
@@ -87,6 +88,11 @@
         <button class="btn sm" id="btnPaint" title="Recolour the selection (or double-click it)">Paint</button>
         <button class="btn sm" id="btnResetPos" title="Send every moved element back to its original spot">Reset positions</button>
         <button class="btn sm" id="btnGrid">Checker</button>
+        <span style="width:1px;height:20px;background:var(--line)"></span>
+        <button class="btn xs gho" id="zoomOut" title="Zoom out">−</button>
+        <button class="btn xs gho" id="zoomPct" title="Reset to 100%">100%</button>
+        <button class="btn xs gho" id="zoomIn" title="Zoom in">+</button>
+        <button class="btn xs gho" id="zoomFit" title="Fit the artwork">Fit</button>
       </div>
 
       <div id="stagewrap">
@@ -169,6 +175,12 @@
     hold <kbd>Shift</kbd> to insert several without closing. Each icon keeps the licence of its
     set — shown on hover.</p>
 </div></div>
+
+<div class="pop" id="textPop">
+  <header id="textDrag"><b>Text</b><span class="tag" id="textMode">new</span>
+    <span class="spacer"></span><span class="x" id="textClose">✕</span></header>
+  <div class="pbody2" id="textBody"></div>
+</div>
 
 <div class="pop" id="paint">
   <header id="paintDrag"><b>Paint</b><span class="tag" id="paintCount"></span>

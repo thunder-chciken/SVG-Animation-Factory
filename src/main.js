@@ -14,6 +14,8 @@ import { renderAll } from './render.js';
 import { bindTop } from './shell.js';
 import { bindIcons } from './icons.js';
 import { bindMenu } from './menu.js';
+import { bindTextShell } from './text.js';
+import { bindViewport } from './viewport.js';
 import { initPersistence, restoreSession } from './project.js';
 import { initHistory, resetHistory } from './history.js';
 import { loadWorkspace } from './workspace.js';
@@ -31,6 +33,8 @@ bindTop();
 bindPaintShell();
 bindIcons();
 bindMenu();
+bindTextShell();
+bindViewport();
 initPersistence();
 renderAll();
 

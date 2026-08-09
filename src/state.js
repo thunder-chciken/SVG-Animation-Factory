@@ -30,6 +30,10 @@ export const S = {
   // redraw at exactly the same width, looking like the edit never took.
   view: { span: 0 },
 
+  // Canvas zoom / pan. A CSS transform on the stage container, so the SVG's
+  // own coordinates never change and exports stay exactly as authored.
+  viewport: { zoom: 1, x: 0, y: 0 },
+
   // paint editor
   gradId: 0,
   paint: {

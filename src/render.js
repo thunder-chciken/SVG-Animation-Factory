@@ -4,6 +4,7 @@ import { renderLayers, renderSwatches } from './layers.js';
 import { renderOverlay } from './selection.js';
 import { renderInspector } from './inspector.js';
 import { renderTracks } from './transport.js';
+import { refreshTextPanel } from './text.js';
 
 export function renderAll() {
   renderLayers();
@@ -11,4 +12,5 @@ export function renderAll() {
   renderOverlay();
   renderInspector();
   renderTracks();
+  refreshTextPanel();
 }

@@ -34,6 +34,21 @@ Painting a group reaches its leaves, and colour is written as inline style as we
 an attribute so it still lands on Illustrator/Figma exports that drive fills from a
 `<style>` block.
 
+**Text** — type straight onto the canvas with font, size, weight, letter-spacing,
+alignment and colour. Each line becomes its own `<text>` element so lines animate
+separately, and **Split into letters** turns every character into its own element —
+individually selectable, individually animatable. Seven text presets carry their own
+stagger, so Typewriter, Letter cascade, Letter pop, Letter flip, Letter wave, Letters
+from edges and Letter shimmer spread across the letters in one click.
+
+Fonts are web-safe stacks on purpose: an SVG carries no font with it, so anything
+exotic silently falls back on a machine that lacks it.
+
+**Navigate** — Photoshop's canvas controls. **Alt + middle-drag** scrubby-zooms,
+**middle-drag** pans, **Alt/Ctrl + wheel** zooms toward the pointer, **Space + drag**
+pans, and the wheel scrolls. Zoom is a CSS transform on the stage container, so the
+document's own coordinates never change and exports stay exactly as authored.
+
 **Separate** — the part that makes real logos animatable:
 - split live `<text>` into one element per character or word, positioned by glyph metrics
 - explode a welded compound path into separate shapes, welding each counter (the hole
@@ -193,6 +208,8 @@ src/
   history.js          snapshot undo/redo
   workspace.js        panel order and open state
   transform.js        static move / scale / rotate / skew
+  viewport.js         canvas zoom and pan
+  text.js             text creation and editing
   menu.js             File menu, recent projects, save handles
   raster.js           PNG and JPEG export
   icons.js            Iconify search and insertion
@@ -213,6 +230,9 @@ hoisted function bindings. Keep it that way: put new wiring in `main.js`.
 
 | Key | Action |
 |---|---|
+| `T` | Text tool |
+| `Alt` + middle-drag | Zoom · middle-drag pans · `Space`+drag pans |
+| `Alt`/`Ctrl` + wheel | Zoom toward the pointer |
 | `Del` | Delete the selection |
 | `Ctrl S` / `Ctrl Shift S` | Save / Save As |
 | `Shift` + click | Add / remove from the selection |
@@ -262,6 +282,12 @@ In the icon browser, hold `Shift` while clicking to insert several without closi
 - Pointer capture is taken only once a press becomes a real drag. Capturing on every
   press retargets the follow-up mouse events — including `dblclick` — at the stage
   container, and double-click-to-paint stops resolving a shape.
+- Canvas zoom is a CSS transform on the stage container rather than a change to the
+  SVG's viewBox. The document keeps the coordinates you authored, and `getScreenCTM()`
+  already folds the CSS transform in, so dragging still tracks the pointer 1:1 at any
+  zoom without special-casing.
+- Typed text becomes one `<text>` per line, not tspans. Tspans cannot be positioned or
+  animated independently, and the letter splitter walks real `<text>` nodes.
 - Static transforms are stored as a model in a data attribute rather than parsed back
   out of the transform string. Round-tripping a matrix loses which of the infinitely
   many rotate/skew/scale combinations produced it, so the sliders would drift.

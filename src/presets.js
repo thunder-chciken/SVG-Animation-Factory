@@ -50,6 +50,21 @@ export const PRESETS = [
  { n: 'Draw reverse',    s: 'stroke 100% → 0',      set: [P('drawEnd', 1, 0)], e: 'power2.inOut', d: 1.6 },
  { n: 'Wipe segment',    s: 'travelling dash',      set: [P('drawStart', 0, .85), P('drawEnd', .15, 1)], e: 'power1.inOut', d: 1.4 },
  { n: 'Draw then fill',  s: 'outline, then colour', set: [P('drawEnd', 0, 1), P('opacity', .25, 1)], e: 'power2.inOut', d: 1.8 },
+ // text — these carry their own stagger, so they spread across split letters
+ { n: 'Typewriter',      s: 'letters appear in turn',  set: [P('opacity', 0, 1)], e: 'none', d: .01,
+   st: { amount: 1.1, from: 'start' } },
+ { n: 'Letter cascade',  s: 'letters drop in',         set: [P('y', 42, 0), P('opacity', 0, 1)], e: 'power3.out', d: .6,
+   st: { amount: .8, from: 'start' } },
+ { n: 'Letter pop',      s: 'letters spring up',       set: [P('scale', 0, 1), P('opacity', 0, 1)], e: 'back.out', cfg: '2', d: .55,
+   st: { amount: .7, from: 'start' } },
+ { n: 'Letter flip',     s: '3D flip, one by one',     set: [P('rotationX', -90, 0), P('opacity', 0, 1), P('perspective', 600, 600)], e: 'power3.out', d: .6,
+   st: { amount: .9, from: 'start' } },
+ { n: 'Letter wave',     s: 'loops up and down',       set: [P('y', 0, -16)], e: 'sine.inOut', d: .9, rep: -1, yoyo: true,
+   st: { amount: .7, from: 'start' } },
+ { n: 'Letters from edges', s: 'in from both ends',    set: [P('y', 30, 0), P('opacity', 0, 1)], e: 'power2.out', d: .7,
+   st: { amount: .9, from: 'edges' } },
+ { n: 'Letter shimmer',  s: 'loops a bright sweep',    set: [P('brightness', 1, 2.1)], e: 'sine.inOut', d: .6, rep: -1, yoyo: true,
+   st: { amount: 1.2, from: 'start' } },
  // exits
  { n: 'Fade out',        s: 'opacity 1 → 0',        set: [P('opacity', 1, 0)], e: 'power2.in', d: .7 },
  { n: 'Fly out up',      s: 'up + fade',            set: [P('y', 0, -70), P('opacity', 1, 0)], e: 'power2.in', d: .7 },
@@ -84,6 +99,11 @@ export function applyPreset(i) {
   clip.timing.ease = e; clip.timing.dir = dir || 'out'; clip.timing.cfg = p.cfg || '';
   clip.timing.duration = p.d; clip.timing.repeat = p.rep || 0;
   clip.timing.yoyo = !!p.yoyo; clip.timing.repeatDelay = p.rd || 0;
+  // A preset owns its stagger too, so the text effects spread across split
+  // letters without having to go and set it by hand every time.
+  clip.stagger.amount = p.st?.amount || 0;
+  clip.stagger.from = p.st?.from || 'start';
+  clip.stagger.ease = p.st?.ease || 'none';
   clip.name = p.n;
   rebuild(); renderAll(); playFrom(clip);
 }
