@@ -16,11 +16,11 @@ const KEY = 'saf:workspace:v1';
    Anything missing from a saved order is appended, so adding a section in
    a later version does not vanish for people with a stored layout. */
 export const DEFAULT_ORDER = [
-  'presets', 'timing', 'loop', 'stagger', 'origin',
+  'xform', 'presets', 'timing', 'loop', 'stagger', 'origin',
   'pos', 'scale', 'look', 'fx', 'draw', 'mp', 'trig',
 ];
 
-export const DEFAULT_OPEN = ['presets', 'timing', 'loop', 'pos', 'look'];
+export const DEFAULT_OPEN = ['xform', 'presets', 'timing', 'loop', 'look'];
 
 export const WS = {
   order: [...DEFAULT_ORDER],

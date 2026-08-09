@@ -19,8 +19,17 @@ canvas to rubber-band a group. Whatever is selected is what a preset applies to,
 preset always starts a new lane for the current selection. Drag a shape to move it;
 **hold Shift mid-drag** to lock it to a straight rail (see below).
 
+**Transform** — move, scale, rotate and skew the artwork itself, with **no animation on
+it at all**. Written to a dedicated wrapper so GSAP never overwrites it and any transform
+already in the source file keeps working. Clips animate on top of whatever you set here.
+
+**Delete** — `Del` removes whatever is selected, from the canvas or the layer tree, and
+cleans up any lane left with nothing to animate. There is a Delete button on the stage
+toolbar too.
+
 **Paint** — double-click anything on the canvas for an HSV colour wheel: hue ring
-outside, saturation/value square inside, with a hex field and eyedropper alongside.
+outside, saturation/value square inside, with a hex field, eyedropper and a stroke-width
+slider with matching pixel entry.
 Painting a group reaches its leaves, and colour is written as inline style as well as
 an attribute so it still lands on Illustrator/Figma exports that drive fills from a
 `<style>` block.
@@ -99,13 +108,33 @@ npm run preview   # serve the built output
 The build is static. On Vercel it is zero-config — `vercel.json` pins the framework,
 build command and output directory, and adds long-lived caching for hashed assets.
 
-## Saving work
+## Files
 
-- **Session autosave** — the current project is written to `localStorage` (debounced,
-  plus a flush on unload) and restored on the next visit.
-- **Save / Open project** — a `.saf.json` file holding the live markup plus every clip,
-  trigger setting and hidden-element flag. Element ids are preserved inside it, so
-  reopening a project keeps each clip pointed at the right shapes.
+Everything lives under **File** in the top bar:
+
+| Item | What it does |
+|---|---|
+| New… | Empties the stage and starts a fresh project |
+| Open… | Opens an `.svg` or a `.saf.json` project |
+| Export as ▸ | PNG at 2x or 4x, JPEG at 2x, or the code export sheet |
+| Open Recent ▸ | The last eight projects, stored locally and openable offline |
+| Close / Close All | Closes the project; Close All also clears the recent list |
+| Save | Writes back to the file you opened |
+| Save As… | Writes to a new file and switches to it |
+| Save a Copy… | Writes a copy without changing which file you are editing |
+
+Save and Save As mean what they mean in a desktop app: where the browser supports the
+File System Access API the studio keeps the file handle, so **Save** overwrites the file
+you opened instead of dropping another numbered copy in Downloads. Elsewhere it falls
+back to a download and Save behaves like Save As.
+
+PNG and JPEG capture the canvas exactly as it looks at the current playhead — a still is
+a still, so "what you can see" is the only frame that isn't a guess. JPEG has no alpha,
+so it is filled with the current stage background.
+
+The studio also autosaves the open project to `localStorage` (debounced, plus a flush on
+unload) and reopens it on your next visit. Nothing is loaded over the top of it — with
+nothing stored the stage starts empty and the sample is one click away under File.
 
 ## This does not have to stay a static site
 
@@ -163,6 +192,9 @@ src/
   transport.js        playback controls, lanes, bar dragging, ruler zoom
   history.js          snapshot undo/redo
   workspace.js        panel order and open state
+  transform.js        static move / scale / rotate / skew
+  menu.js             File menu, recent projects, save handles
+  raster.js           PNG and JPEG export
   icons.js            Iconify search and insertion
   wheel.js            HSV colour wheel
   filters.js          CSS filter functions shared with the exporters
@@ -181,6 +213,8 @@ hoisted function bindings. Keep it that way: put new wiring in `main.js`.
 
 | Key | Action |
 |---|---|
+| `Del` | Delete the selection |
+| `Ctrl S` / `Ctrl Shift S` | Save / Save As |
 | `Shift` + click | Add / remove from the selection |
 | `Shift` during a drag | Lock movement to a straight rail |
 | `Ctrl Z` | Undo |
@@ -228,6 +262,9 @@ In the icon browser, hold `Shift` while clicking to insert several without closi
 - Pointer capture is taken only once a press becomes a real drag. Capturing on every
   press retargets the follow-up mouse events — including `dblclick` — at the stage
   container, and double-click-to-paint stops resolving a shape.
+- Static transforms are stored as a model in a data attribute rather than parsed back
+  out of the transform string. Round-tripping a matrix loses which of the infinitely
+  many rotate/skew/scale combinations produced it, so the sliders would drift.
 - Paint writes an inline style, not just a presentation attribute. A `<style>` class
   rule outranks a presentation attribute, and Illustrator and Figma both export fills
   that way — setting only the attribute leaves the shape visibly unchanged.

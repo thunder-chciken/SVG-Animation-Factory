@@ -4,6 +4,8 @@
 import { S, $, esc, round, clamp, toast, markDirty } from './state.js';
 import { OPEN_SECT, sect, ctlRow, propRow, syncOpenToWorkspace } from './ui.js';
 import { WS, moveSection, resetWorkspace } from './workspace.js';
+import { readXf, patchXf, resetXf, IDENTITY } from './transform.js';
+import { renderOverlay } from './selection.js';
 import { syncLoopUI } from './transport.js';
 import { SCHEMA, EASES, EASE_DIR, newClip } from './schema.js';
 import { presetsSection, applyPreset } from './presets.js';
@@ -50,6 +52,36 @@ export function revealLoopSection() {
   setTimeout(() => el?.classList.remove('flash'), 900);
 }
 
+/* Static transform — the artwork's own placement, independent of any clip.
+   Scale, rotate and skew are laid out here so they work on a plain shape
+   with no animation on it at all; clips then animate on top. */
+function transformSection() {
+  const recs = selectedRecs();
+  const t = recs.length ? readXf(recs[0].node) : { ...IDENTITY };
+  const dis = recs.length ? '' : 'disabled';
+  const row = (label, key, val, min, max, step, unit) => `
+    <div class="ctl"><label>${label}</label>
+      <input type="range" data-xf="${key}" min="${min}" max="${max}" step="${step}" value="${val}" ${dis}>
+      <input type="number" data-xfn="${key}" value="${round(val, 3)}" step="${step}" title="${unit}" ${dis}>
+    </div>`;
+  return sect('xform', 'Transform' + (recs.length > 1 ? ` · ${recs.length}` : ''), `
+    ${recs.length ? '' : '<p class="hint" style="margin-bottom:7px">Select something on the canvas first.</p>'}
+    ${row('X', 'x', t.x, -1000, 1000, 1, 'px')}
+    ${row('Y', 'y', t.y, -1000, 1000, 1, 'px')}
+    ${row('Rotate', 'rot', t.rot, -360, 360, .5, '°')}
+    ${row('Scale X', 'sx', t.sx, 0.05, 5, .01, '×')}
+    ${row('Scale Y', 'sy', t.sy, 0.05, 5, .01, '×')}
+    ${row('Skew X', 'kx', t.kx, -80, 80, .5, '°')}
+    ${row('Skew Y', 'ky', t.ky, -80, 80, .5, '°')}
+    <div class="row" style="margin:8px 0 0">
+      <label class="hint" style="display:flex;gap:5px;align-items:center;flex:1">
+        <input type="checkbox" id="xfLink" checked> link scale</label>
+      <button class="btn xs" id="xfReset" ${dis}>Reset transform</button>
+    </div>
+    <p class="hint" style="margin-top:6px">Applies to the artwork itself, so it works with no
+      animation on the element. Animation clips build on top of whatever you set here.</p>`);
+}
+
 export function renderInspector() {
   const box = $('#inspector');
   const recs = selectedRecs();
@@ -86,13 +118,14 @@ export function renderInspector() {
   const parts = {};
   parts.presets = presetsSection();
   parts.loop = loopSection();
+  parts.xform = transformSection();
 
   const emit = ids => ids.map(id => parts[id] || '').join('');
 
   if (!clip) {
     html += `<div class="empty-note">No clip selected.<br>Select elements and press
       <b>+ Animate selection</b>, or pick a preset below.</div>`;
-    html += emit(WS.order.filter(id => id === 'presets' || id === 'loop'));
+    html += emit(WS.order.filter(id => ['xform', 'presets', 'loop'].includes(id)));
     box.innerHTML = html; bindInspector(); return;
   }
 
@@ -319,6 +352,40 @@ function bindInspector() {
     syncOpenToWorkspace();
   });
   bindSectionDrag(box);
+
+  /* static transform — global, binds whether or not a clip is active */
+  const xfTargets = () => selectedRecs();
+  const applyXf = (key, val) => {
+    const link = $('#xfLink')?.checked;
+    xfTargets().forEach(r => {
+      const patch = { [key]: val };
+      if (link && (key === 'sx' || key === 'sy')) { patch.sx = val; patch.sy = val; }
+      patchXf(r.node, patch);
+    });
+    renderOverlay();
+    markDirty();
+  };
+  const mirrorXf = (key, val) => {
+    box.querySelectorAll(`[data-xf="${key}"]`).forEach(el => { el.value = val; });
+    box.querySelectorAll(`[data-xfn="${key}"]`).forEach(el => { el.value = round(val, 3); });
+    if ($('#xfLink')?.checked && (key === 'sx' || key === 'sy')) {
+      ['sx', 'sy'].forEach(k => {
+        box.querySelectorAll(`[data-xf="${k}"]`).forEach(el => { el.value = val; });
+        box.querySelectorAll(`[data-xfn="${k}"]`).forEach(el => { el.value = round(val, 3); });
+      });
+    }
+  };
+  box.querySelectorAll('[data-xf]').forEach(el => el.oninput = () => {
+    const v = parseFloat(el.value) || 0; mirrorXf(el.dataset.xf, v); applyXf(el.dataset.xf, v);
+  });
+  box.querySelectorAll('[data-xfn]').forEach(el => el.oninput = () => {
+    const v = parseFloat(el.value) || 0; mirrorXf(el.dataset.xfn, v); applyXf(el.dataset.xfn, v);
+  });
+  const xfR = $('#xfReset'); if (xfR) xfR.onclick = () => {
+    xfTargets().forEach(r => resetXf(r.node));
+    renderOverlay(); markDirty(); renderInspector();
+    toast('Transform reset', 'ok');
+  };
 
   /* loop settings — global, so they bind whether or not a clip is active */
   const lc = S.loopCfg;

@@ -31,6 +31,37 @@
 .pbody{overflow:auto;flex:1;min-height:0}
 .pad{padding:10px}
 
+/* ---------- dropdown menu ---------- */
+.menuwrap{position:relative}
+#btnFile.on{background:var(--panel3);border-color:var(--amber);color:var(--amber)}
+.menu{
+  position:absolute;top:calc(100% + 6px);left:0;min-width:206px;z-index:180;display:none;
+  background:var(--panel);border:1px solid var(--line2);border-radius:7px;padding:5px 0;
+  box-shadow:0 18px 48px rgba(0,0,0,.62);
+}
+.menu.on{display:block}
+.mi{
+  display:flex;align-items:center;gap:8px;width:100%;padding:6px 14px;background:none;border:0;
+  text-align:left;font-size:12px;color:var(--text);cursor:pointer;white-space:nowrap;position:relative;
+}
+.mi:hover{background:var(--sel-d);color:#fff}
+.mi.disabled{color:var(--dimmer);cursor:default;font-size:11px}
+.mi.disabled:hover{background:none;color:var(--dimmer)}
+.mi-note{margin-left:auto;font:9px/1 var(--mono);color:var(--dimmer);padding-left:14px}
+.mi:hover .mi-note{color:rgba(255,255,255,.7)}
+.mi-arrow{margin-left:auto;color:var(--dimmer);font-size:13px;line-height:1}
+.mi:hover .mi-arrow{color:#fff}
+.msep{height:1px;background:var(--line);margin:5px 0}
+.mgap{height:9px}
+.msub{
+  position:absolute;left:100%;top:-6px;min-width:186px;display:none;
+  background:var(--panel);border:1px solid var(--line2);border-radius:7px;padding:5px 0;
+  box-shadow:0 18px 48px rgba(0,0,0,.62);
+}
+.mi.has-sub:hover > .msub{display:block}
+/* keep the parent row highlighted while the pointer is inside the submenu */
+.mi.has-sub:hover{background:var(--sel-d);color:#fff}
+
 /* ---------- toast ---------- */
 #toast{position:fixed;bottom:18px;left:50%;transform:translate(-50%,26px);background:var(--panel3);
   border:1px solid var(--line2);border-left:3px solid var(--amber);border-radius:6px;padding:9px 15px;

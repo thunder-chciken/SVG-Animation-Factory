@@ -2,14 +2,15 @@
    APP SHELL — topbar, dropzone, stage toolbar, export sheet, shortcuts
    ===================================================================== */
 import { S, $, $$, toast } from './state.js';
-import { loadSVG, clearStage } from './ingest.js';
-import { select, nudge, resetPositions } from './selection.js';
+import { loadSVG } from './ingest.js';
+import { select, nudge, resetPositions, deleteSelected } from './selection.js';
 import { splitText, splitCompoundPath } from './separate.js';
 import { openPaint } from './paint.js';
 import { rebuild } from './timeline.js';
 import { renderAll } from './render.js';
 import { openExport, setActiveTab, currentTab } from './export/index.js';
-import { downloadProject, openProjectText, clearSession, flushSession } from './project.js';
+import { openProjectText, flushSession } from './project.js';
+import { saveProject } from './menu.js';
 import { undo, redo, canUndo, canRedo, onHistoryChange, resetHistory } from './history.js';
 import { openIcons } from './icons.js';
 import { resetWorkspace } from './workspace.js';
@@ -77,22 +78,7 @@ export function bindTop() {
     freshLoad(S.raw, S.fileName);
   };
 
-  /* ---------- projects ---------- */
-  $('#btnNew').onclick = () => {
-    if (S.svg && !confirm('Clear the stage and discard this project?')) return;
-    clearStage(); clearSession(); resetHistory();
-    toast('Cleared');
-  };
   $('#btnResetPanels').onclick = () => { resetWorkspace(); applyWorkspaceOpen(); renderAll(); };
-  $('#btnSaveProj').onclick = downloadProject;
-  $('#btnOpenProj').onclick = () => $('#projFile').click();
-  $('#projFile').onchange = e => {
-    const f = e.target.files[0]; if (!f) return;
-    const r = new FileReader();
-    r.onload = () => { if (openProjectText(r.result)) resetHistory(); };
-    r.readAsText(f);
-    e.target.value = '';
-  };
 
   /* ---------- export sheet ---------- */
   $('#btnExport').onclick = openExport;
@@ -137,6 +123,7 @@ export function bindTop() {
   $('#btnGrid').onclick = () => $('#stagewrap').classList.toggle('plain');
   $('#btnPaint').onclick = () => openPaint();
   $('#btnResetPos').onclick = resetPositions;
+  $('#btnDelete').onclick = deleteSelected;
 
   /* ---------- keyboard ---------- */
   document.addEventListener('keydown', e => {
@@ -157,9 +144,12 @@ export function bindTop() {
       $('#modal').classList.remove('on');
       $('#iconModal').classList.remove('on');
     }
-    if ((e.key === 'Delete' || e.key === 'Backspace') && S.activeClip) {
+    if (e.key === 'Delete' || e.key === 'Backspace') {
       e.preventDefault();
-      S.clips = S.clips.filter(c => c.id !== S.activeClip); S.activeClip = null; rebuild(); renderAll();
+      if (S.sel.size) deleteSelected();
+      else if (S.activeClip) {
+        S.clips = S.clips.filter(c => c.id !== S.activeClip); S.activeClip = null; rebuild(); renderAll();
+      }
     }
     if (e.key.startsWith('Arrow') && S.sel.size) {
       e.preventDefault();
@@ -171,6 +161,6 @@ export function bindTop() {
     if (key === 'i' && !mod) { e.preventDefault(); openIcons(); }
     if (mod && key === 'a') { e.preventDefault(); select(S.items.map(i => i.uid)); }
     if (mod && key === 'e') { e.preventDefault(); openExport(); }
-    if (mod && key === 's') { e.preventDefault(); flushSession(); downloadProject(); }
+    if (mod && key === 's') { e.preventDefault(); saveProject({ as: e.shiftKey }); }
   });
 }

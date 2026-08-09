@@ -19,6 +19,9 @@ export function svgSource() {
 
   const c = S.svg.cloneNode(true);
   c.querySelectorAll('[data-svg-origin]').forEach(n => n.removeAttribute('data-svg-origin'));
+  // The static-transform model is studio bookkeeping; the composed transform
+  // attribute it produces is the part that matters in an export.
+  c.querySelectorAll('[data-saf-xf]').forEach(n => n.removeAttribute('data-saf-xf'));
   c.querySelectorAll('[style]').forEach(n => {
     // clearProps leaves transform-origin behind. Inline, it outranks the rule
     // the CSS export writes, so the pivot would silently be wrong.

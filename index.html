@@ -16,6 +16,11 @@
 
   <div id="topbar">
     <div class="brand"><span class="kf"></span><b>SVG Animation Factory</b><small>v1</small></div>
+    <div class="menuwrap">
+      <button class="btn sm" id="btnFile">File ▾</button>
+      <div class="menu" id="fileMenu"></div>
+    </div>
+    <input type="file" id="menuFile" accept=".svg,.json,.saf.json,image/svg+xml,application/json" hidden>
     <button class="btn sm gho" id="btnUndo" title="Undo (Ctrl+Z)" disabled>↶</button>
     <button class="btn sm gho" id="btnRedo" title="Redo (Ctrl+Shift+Z)" disabled>↷</button>
     <span style="width:1px;height:20px;background:var(--line)"></span>
@@ -23,10 +28,6 @@
     <button class="btn sm" id="btnIcons" title="Search 200,000+ open-source icons">Icons</button>
     <button class="btn sm" id="btnPaste">Paste code</button>
     <button class="btn sm" id="btnSample">Load sample</button>
-    <span style="width:1px;height:20px;background:var(--line)"></span>
-    <button class="btn sm" id="btnNew" title="Clear the stage and start over">New</button>
-    <button class="btn sm" id="btnSaveProj" title="Download this project as a .saf.json file">Save</button>
-    <button class="btn sm" id="btnOpenProj" title="Open a .saf.json project file">Open project</button>
     <input type="file" id="projFile" accept=".json,.saf.json,application/json" hidden>
     <span class="spacer"></span>
     <span class="tag" id="stat">no file</span>
@@ -73,6 +74,7 @@
         <button class="btn sm" id="btnSelAll">All</button>
         <button class="btn sm" id="btnSelNone">None</button>
         <button class="btn sm" id="btnSelInv">Invert</button>
+        <button class="btn sm danger" id="btnDelete" title="Delete the selection (Del)">Delete</button>
         <span style="width:1px;height:20px;background:var(--line)"></span>
         <button class="btn sm" id="btnSplitText" title="Break live text into one element per character">Split letters</button>
         <button class="btn sm" id="btnSplitWords">Split words</button>
@@ -92,7 +94,8 @@
         <svg id="overlay"></svg>
         <div id="empty">
           <div class="big">◇</div>
-          <div>No SVG loaded<br><span style="font-size:10.5px">Drop a file on the left panel to begin</span></div>
+          <div>No artwork open<br><span style="font-size:10.5px">Use <b>File ▸ New</b> or <b>Open</b>, drop an SVG on the left,<br>
+            add an <b>Icon</b>, or load the sample from the File menu</span></div>
         </div>
       </div>
 

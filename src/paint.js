@@ -154,6 +154,34 @@ function loadPaint() {
   if (c && c.hex) { p.type = 'solid'; p.solid = c.hex; }
 }
 
+function currentStrokeWidth() {
+  const rec = selectedRecs()[0];
+  if (!rec) return 0;
+  const n = paintTargets(rec.node)[0];
+  const v = parseFloat(n.style.strokeWidth || n.getAttribute('stroke-width')
+    || getComputedStyle(n).strokeWidth);
+  return isNaN(v) ? 0 : round(v, 2);
+}
+
+function applyStrokeWidth(px) {
+  const w = Math.max(0, parseFloat(px) || 0);
+  const nodes = new Set();
+  selectedRecs().forEach(r => paintTargets(r.node).forEach(n => nodes.add(n)));
+  nodes.forEach(n => {
+    n.style.setProperty('stroke-width', w);
+    n.setAttribute('stroke-width', w);
+    // A width with no stroke paints nothing; give it the current colour so the
+    // slider does something visible instead of silently no-op-ing.
+    const has = (n.style.stroke || n.getAttribute('stroke') || '').trim();
+    if (w > 0 && (!has || has === 'none')) {
+      n.style.setProperty('stroke', S.paint.solid);
+      n.setAttribute('stroke', S.paint.solid);
+    }
+  });
+  refreshIndexSoon();
+  return w;
+}
+
 function renderPaint() {
   const p = S.paint, n = S.sel.size;
   $('#paintCount').textContent = n === 1 ? (selectedRecs()[0]?.label || '1') : n + ' selected';
@@ -205,6 +233,11 @@ function renderPaint() {
         <input type="range" id="pAlphaR" min="0" max="1" step="0.01" value="${p.alpha}">
         <input type="number" id="pAlphaN" min="0" max="1" step="0.01" value="${p.alpha}"></div>`;
   }
+  // Stroke width is a property of the shape, not of the fill/stroke choice,
+  // so it stays visible whichever role is active.
+  h += `<div class="ctl" style="margin-top:8px"><label>Stroke width</label>
+      <input type="range" id="pSW" min="0" max="40" step="0.1" value="${currentStrokeWidth()}">
+      <input type="number" id="pSWn" min="0" step="0.1" value="${currentStrokeWidth()}" title="px"></div>`;
   h += `<div class="row" style="margin:8px 0 0">
       <button class="btn sm" id="pEyedrop" title="Copy the paint of the first selected element">Sample</button>
       <button class="btn sm" id="pSwap" title="Reverse the gradient" ${grad ? '' : 'disabled'}>⇄ Reverse</button>
@@ -291,6 +324,14 @@ function bindPaint() {
     p.stops = p.stops.map(st => ({ ...st, o: round(1 - st.o, 4) })).reverse(); redraw();
   };
   const ey = b.querySelector('#pEyedrop'); if (ey) ey.onclick = () => { loadPaint(); renderPaint(); };
+
+  const swSync = v => {
+    const w = applyStrokeWidth(v);
+    const r = b.querySelector('#pSW'), n = b.querySelector('#pSWn');
+    if (r) r.value = Math.min(w, 40); if (n) n.value = w;
+  };
+  bind('#pSW', e => swSync(e.target.value));
+  bind('#pSWn', e => swSync(e.target.value));
 }
 
 export function openPaint(x, y) {

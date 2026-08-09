@@ -5,6 +5,10 @@ import { S, $, NS, round, toast, markDirty } from './state.js';
 import { renderLayers, highlightLayer } from './layers.js';
 import { renderInspector } from './inspector.js';
 import { openPaint } from './paint.js';
+import { wrapFor, readXf, patchXf } from './transform.js';
+import { reindex } from './ingest.js';
+import { rebuild } from './timeline.js';
+import { renderAll } from './render.js';
 
 export function recFromNode(n) {
   while (n && n !== S.svg) {
@@ -44,23 +48,9 @@ export function renderOverlay() {
   if (picked.length <= 150) picked.forEach(r => draw(r, ''));
 }
 
-/* Elements are repositioned by a dedicated <g> wrapper, never by their own
-   transform — GSAP owns that, and would wipe the offset the moment it tweens. */
-export function moveWrap(node) {
-  const p = node.parentNode;
-  if (p && p.dataset && p.dataset.safMove) return p;
-  const g = document.createElementNS(NS, 'g');
-  g.setAttribute('class', 'saf-move'); g.dataset.safMove = '1';
-  p.insertBefore(g, node); g.appendChild(node);
-  return g;
-}
-
-export function wrapOffset(g) {
-  const m = (g.getAttribute('transform') || '').match(/translate\(\s*(-?[\d.eE+-]+)[\s,]+(-?[\d.eE+-]+)/);
-  return m ? { x: +m[1], y: +m[2] } : { x: 0, y: 0 };
-}
-
-export function setOffset(g, x, y) { g.setAttribute('transform', `translate(${round(x, 2)} ${round(y, 2)})`); }
+/* Position is one field of the static transform model — see transform.js
+   for why it lives on a wrapper rather than the element itself. */
+export const moveWrap = wrapFor;
 
 export function userScale() {
   try { const m = S.svg.getScreenCTM(); return (m && m.a) ? m.a : 1; } catch (e) { return 1; }
@@ -79,20 +69,58 @@ export function topSel() {
 export function nudge(dx, dy) {
   const recs = topSel(); if (!recs.length) return;
   recs.forEach(r => {
-    const g = moveWrap(r.node), o = wrapOffset(g);
-    setOffset(g, o.x + dx, o.y + dy);
+    const o = readXf(r.node);
+    patchXf(r.node, { x: o.x + dx, y: o.y + dy });
   });
   renderOverlay();
   markDirty();
 }
 
+/* Position only — rotation, scale and skew are left alone. The Transform
+   panel has its own reset for those. */
 export function resetPositions() {
   if (!S.svg) return;
-  const wraps = [...S.svg.querySelectorAll('[data-saf-move]')];
-  wraps.forEach(g => setOffset(g, 0, 0));
+  let n = 0;
+  S.items.forEach(rec => {
+    const t = readXf(rec.node);
+    if (t.x || t.y) { patchXf(rec.node, { x: 0, y: 0 }); n++; }
+  });
   renderOverlay();
   markDirty();
-  toast(wraps.length ? `Reset ${wraps.length} position${wraps.length > 1 ? 's' : ''}` : 'Nothing has been moved.');
+  toast(n ? `Reset ${n} position${n > 1 ? 's' : ''}` : 'Nothing has been moved.');
+}
+
+/* ---------------------------------------------------------------------
+   Deleting artwork. Clips that pointed at a removed element have to be
+   cleaned up too, or the timeline keeps a lane that can never play.
+   --------------------------------------------------------------------- */
+export function deleteSelected() {
+  if (!S.svg || !S.sel.size) { toast('Nothing selected.'); return; }
+  const recs = topSel();
+  if (!recs.length) return;
+
+  const doomed = new Set();
+  recs.forEach(r => { doomed.add(r.uid); descendants(r.uid).forEach(u => doomed.add(u)); });
+
+  const labels = recs.slice(0, 3).map(r => r.label).join(', ');
+  recs.forEach(r => {
+    const p = r.node.parentNode;
+    const outer = (p && p.dataset && p.dataset.safMove) ? p : r.node;
+    outer.remove();
+  });
+
+  S.clips.forEach(c => { c.targets = c.targets.filter(u => !doomed.has(u)); });
+  const orphaned = S.clips.filter(c => !c.targets.length).length;
+  S.clips = S.clips.filter(c => c.targets.length);
+  if (!S.clips.some(c => c.id === S.activeClip)) S.activeClip = null;
+
+  S.sel.clear();
+  reindex();
+  rebuild(true);
+  renderAll();
+  markDirty();
+  toast(`Deleted ${recs.length === 1 ? labels : recs.length + ' elements'}` +
+        (orphaned ? ` · ${orphaned} empty lane${orphaned > 1 ? 's' : ''} removed` : ''), 'ok');
 }
 
 export function descendants(uid) {
@@ -240,7 +268,7 @@ function applyDrag(clientX, clientY, shift) {
   }
 
   DRAG.appX = appX; DRAG.appY = appY;
-  DRAG.wraps.forEach(w => setOffset(w.g, w.base.x + appX, w.base.y + appY));
+  DRAG.wraps.forEach(w => patchXf(w.node, { x: w.base.x + appX, y: w.base.y + appY }));
   renderOverlay();
 
   $('#stat').textContent = DRAG.rail
@@ -313,8 +341,9 @@ export function bindStage() {
       stage.style.cursor = 'grabbing';
       try { stage.setPointerCapture(e.pointerId); } catch (err) { /* capture is a nicety */ }
       DRAG.wraps = topSel().map(r => {
-        const g = moveWrap(r.node);
-        return { g, base: wrapOffset(g) };
+        wrapFor(r.node);
+        const t = readXf(r.node);
+        return { node: r.node, base: { x: t.x, y: t.y } };
       });
       if (!DRAG.wraps.length) { DRAG = null; stage.style.cursor = ''; return; }
     }
