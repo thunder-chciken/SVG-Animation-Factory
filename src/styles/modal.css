@@ -1,0 +1,36 @@
+/* ============================================================
+   Export sheet and the floating Paint popover.
+   ============================================================ */
+#modal{position:fixed;inset:0;background:rgba(8,9,11,.8);z-index:100;display:none;
+  align-items:center;justify-content:center;padding:28px;backdrop-filter:blur(3px)}
+#modal.on{display:flex}
+.sheet{background:var(--panel);border:1px solid var(--line2);border-radius:9px;width:min(940px,100%);
+  max-height:100%;display:flex;flex-direction:column;box-shadow:0 24px 70px rgba(0,0,0,.65)}
+.sheet header{display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--line)}
+.sheet header b{font-size:13px;letter-spacing:.04em}
+.tabs{display:flex;gap:3px;padding:8px 14px 0;flex-wrap:wrap}
+.tab{background:transparent;border:1px solid transparent;border-bottom:0;border-radius:5px 5px 0 0;
+  padding:6px 11px;cursor:pointer;color:var(--dim);font-size:11px}
+.tab.on{background:var(--bg);border-color:var(--line2);color:var(--amber)}
+.sheet .code{flex:1;overflow:auto;margin:0 14px 14px;background:var(--bg);border:1px solid var(--line2);
+  border-radius:0 6px 6px 6px;min-height:260px}
+.sheet pre{padding:13px;font:11px/1.65 var(--mono);white-space:pre;color:#cfd6e2}
+.tok-k{color:#c792ea}.tok-s{color:#c3e88d}.tok-n{color:#f78c6c}.tok-c{color:#5d6674;font-style:italic}
+.tok-f{color:#82aaff}
+
+/* ---------- paint popover ---------- */
+.pop{position:fixed;z-index:150;width:286px;background:var(--panel);border:1px solid var(--line2);
+  border-radius:8px;box-shadow:0 18px 48px rgba(0,0,0,.6);display:none;overflow:hidden}
+.pop.on{display:block}
+.pop header{display:flex;align-items:center;gap:6px;padding:8px 10px;background:var(--panel2);
+  border-bottom:1px solid var(--line);cursor:grab;user-select:none}
+.pop header b{font:10.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
+.pop header.grabbing{cursor:grabbing}
+.pop .pbody2{padding:9px 10px;max-height:60vh;overflow:auto}
+.pop .x{margin-left:auto;cursor:pointer;color:var(--dimmer);padding:0 3px;border-radius:3px}
+.pop .x:hover{color:var(--text);background:var(--panel3)}
+.stop{display:grid;grid-template-columns:26px 1fr 40px 20px;gap:5px;align-items:center;margin-bottom:5px}
+.stop input[type=color]{height:22px}
+.gprev{height:26px;border-radius:4px;border:1px solid var(--line2);margin-bottom:7px;
+  background-image:repeating-conic-gradient(#3a3a3a 0 25%,#2a2a2a 0 50%);background-size:10px 10px}
+.gprev i{display:block;height:100%;border-radius:3px}

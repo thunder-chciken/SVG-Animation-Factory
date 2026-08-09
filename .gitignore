@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.vercel/
+.vite/
+*.local
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+.claude/settings.local.json
+
+# The original single-file monolith, superseded by src/. Left on disk for
+# reference — delete it whenever you're happy with the split.
+svg-animation-factory.html

@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SVG Animation Factory</title>
+<meta name="description" content="Drop in an SVG, keyframe it on a timeline, export production-ready GSAP, CSS or WordPress code. Everything runs in your browser.">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta property="og:title" content="SVG Animation Factory">
+<meta property="og:description" content="A browser-based SVG animation studio. Index, split, paint, keyframe and export.">
+<meta property="og:type" content="website">
+</head>
+<body>
+<div id="app">
+
+  <div id="topbar">
+    <div class="brand"><span class="kf"></span><b>SVG Animation Factory</b><small>v1</small></div>
+    <button class="btn sm" id="btnOpen">Open SVG</button>
+    <button class="btn sm" id="btnPaste">Paste code</button>
+    <button class="btn sm" id="btnSample">Load sample</button>
+    <span style="width:1px;height:20px;background:var(--line)"></span>
+    <button class="btn sm" id="btnNew" title="Clear the stage and start over">New</button>
+    <button class="btn sm" id="btnSaveProj" title="Download this project as a .saf.json file">Save</button>
+    <button class="btn sm" id="btnOpenProj" title="Open a .saf.json project file">Open project</button>
+    <input type="file" id="projFile" accept=".json,.saf.json,application/json" hidden>
+    <span class="spacer"></span>
+    <span class="tag" id="stat">no file</span>
+    <button class="btn sm" id="btnReset">Reset all</button>
+    <button class="btn sm pri" id="btnExport">Export code</button>
+  </div>
+
+  <div id="main">
+    <!-- ================= LEFT ================= -->
+    <div class="col" id="left">
+      <div class="phead">Source <span class="cnt" id="fileName">—</span></div>
+      <div id="drop">
+        <b>Drop an SVG here</b>
+        <span>or click to browse · paste with <kbd>Ctrl V</kbd><br>
+          drag on canvas to move · double-click to paint</span>
+      </div>
+      <input type="file" id="file" accept=".svg,image/svg+xml" hidden>
+
+      <div class="phead">Elements <span class="cnt" id="layerCount">0</span></div>
+      <div class="row" style="padding:6px 8px 4px;margin:0">
+        <input type="text" id="search" placeholder="Filter by name, tag or color…" style="flex:1">
+      </div>
+      <div class="pbody" id="layers">
+        <div class="empty-note">Load an SVG to index its elements.</div>
+      </div>
+
+      <div class="phead">Colors <span class="cnt" id="swCount">0</span></div>
+      <div class="pad" style="max-height:132px;overflow:auto;flex-shrink:0">
+        <div class="swatches" id="swatches"></div>
+        <p class="hint" style="margin-top:7px">Click a color to select every element using it.</p>
+      </div>
+    </div>
+
+    <!-- ================= CENTER ================= -->
+    <div class="col" id="center">
+      <div id="stagebar">
+        <div class="seg" id="segTool">
+          <button data-tool="pick" class="on" title="Click elements to select">Select</button>
+          <button data-tool="group" title="Click selects the whole parent group">Group</button>
+        </div>
+        <button class="btn sm" id="btnSelAll">All</button>
+        <button class="btn sm" id="btnSelNone">None</button>
+        <button class="btn sm" id="btnSelInv">Invert</button>
+        <span style="width:1px;height:20px;background:var(--line)"></span>
+        <button class="btn sm" id="btnSplitText" title="Break live text into one element per character">Split letters</button>
+        <button class="btn sm" id="btnSplitWords">Split words</button>
+        <button class="btn sm" id="btnSplitPath" title="Break a welded compound path into separate shapes">Split path</button>
+        <label class="hint" style="display:flex;gap:4px;align-items:center" title="Weld each counter (the hole in O, A, B…) back onto its own glyph">
+          <input type="checkbox" id="keepHoles" checked> keep holes</label>
+        <span class="spacer"></span>
+        <label class="hint" style="display:flex;gap:5px;align-items:center">
+          BG <input type="color" id="bgColor" value="#16181d" style="width:26px;height:22px"></label>
+        <button class="btn sm" id="btnPaint" title="Recolour the selection (or double-click it)">Paint</button>
+        <button class="btn sm" id="btnResetPos" title="Send every moved element back to its original spot">Reset positions</button>
+        <button class="btn sm" id="btnGrid">Checker</button>
+      </div>
+
+      <div id="stagewrap">
+        <div id="stage"></div>
+        <svg id="overlay"></svg>
+        <div id="empty">
+          <div class="big">◇</div>
+          <div>No SVG loaded<br><span style="font-size:10.5px">Drop a file on the left panel to begin</span></div>
+        </div>
+      </div>
+
+      <div id="transport">
+        <button class="tbtn" id="tRew" title="Go to start">⏮</button>
+        <button class="tbtn" id="tPlay" title="Play / pause (Space)">▶</button>
+        <button class="tbtn" id="tEnd" title="Go to end">⏭</button>
+        <button class="tbtn" id="tLoop" title="Loop">↻</button>
+        <input type="range" id="scrub" min="0" max="1000" value="0">
+        <span class="tcode" id="tcode">0.00 / 0.00s</span>
+        <select id="speed" style="width:64px">
+          <option value="0.1">0.1×</option><option value="0.25">0.25×</option>
+          <option value="0.5">0.5×</option><option value="1" selected>1×</option>
+          <option value="1.5">1.5×</option><option value="2">2×</option>
+        </select>
+      </div>
+
+      <div id="timeline">
+        <div class="phead">Timeline
+          <span class="cnt"><span id="clipCount">0</span> clips</span>
+        </div>
+        <div id="ruler"></div>
+        <div id="tlbody">
+          <div id="tracks"></div>
+          <div id="playhead"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= RIGHT ================= -->
+    <div class="col" id="right">
+      <div class="phead">Animation <span class="cnt" id="selInfo">nothing selected</span></div>
+      <div class="pbody" id="inspector"></div>
+    </div>
+  </div>
+</div>
+
+<div id="modal"><div class="sheet">
+  <header>
+    <b>Export</b>
+    <span class="tag" id="expNote"></span>
+    <span class="spacer"></span>
+    <button class="btn sm" id="btnCopy">Copy</button>
+    <button class="btn sm" id="btnDownload">Download</button>
+    <button class="btn sm gho" id="btnCloseModal">Close</button>
+  </header>
+  <div class="tabs" id="expTabs"></div>
+  <div class="code"><pre id="expCode"></pre></div>
+</div></div>
+
+<div class="pop" id="paint">
+  <header id="paintDrag"><b>Paint</b><span class="tag" id="paintCount"></span>
+    <span class="x" id="paintClose">✕</span></header>
+  <div class="pbody2" id="paintBody"></div>
+</div>
+
+<div id="toast"></div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
