@@ -8,9 +8,12 @@ import { genHTML } from './html.js';
 import { genWP } from './wp.js';
 import { genCSS } from './css.js';
 import { svgSource } from './svg.js';
+import { genSMIL, smilGaps } from './smil.js';
+import { DOCS } from './docs.js';
 
 export const TABS = [
   { id: 'gsap', label: 'GSAP JS',            ext: 'js',   gen: () => genGSAP() },
+  { id: 'smil', label: 'Animated SVG',       ext: 'svg',  gen: genSMIL },
   { id: 'html', label: 'Standalone HTML',    ext: 'html', gen: genHTML },
   { id: 'wp',   label: 'WordPress / Bricks', ext: 'php',  gen: genWP },
   { id: 'css',  label: 'CSS keyframes',      ext: 'css',  gen: genCSS },
@@ -28,6 +31,26 @@ function highlight(code) {
     .replace(/\b(-?\d+\.?\d*)\b/g, '<span class="tok-n">$1</span>');
 }
 
+const li = arr => arr.map(s => `<li>${esc(s)}</li>`).join('');
+
+function renderDoc(id) {
+  const d = DOCS[id];
+  const box = $('#expDoc');
+  if (!d) { box.innerHTML = ''; return; }
+  // The SMIL export is the one whose losses depend on what you built, so it
+  // reports them against the actual timeline rather than in the abstract.
+  const gaps = id === 'smil' ? smilGaps() : [];
+  box.innerHTML = `
+    <div class="doc-head"><span class="tag">${esc(d.tag)}</span></div>
+    <p class="doc-what">${d.what}</p>
+    ${gaps.length ? `<div class="doc-warn"><b>Dropped from this animation:</b><ul>${li(gaps)}</ul></div>` : ''}
+    <div class="doc-cols">
+      <div><h5>Can</h5><ul class="doc-can">${li(d.can)}</ul></div>
+      <div><h5>Can't</h5><ul class="doc-cant">${li(d.cant)}</ul></div>
+    </div>
+    <details class="doc-embed"><summary>How to put this on a page</summary><pre>${esc(d.embed)}</pre></details>`;
+}
+
 export function openExport() {
   if (!S.svg) { toast('Load an SVG first.', 'err'); return; }
   if (S.clips.some(c => c._start === undefined)) rebuild(true);
@@ -38,6 +61,7 @@ export function openExport() {
   $('#expCode').innerHTML = highlight(code);
   $('#expCode').dataset.raw = code;
   $('#expNote').textContent = `${S.clips.filter(c => c.enabled).length} clip(s) · ${code.split('\n').length} lines`;
+  renderDoc(activeTab);
   $('#modal').classList.add('on');
 }
 

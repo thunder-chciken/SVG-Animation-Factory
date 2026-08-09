@@ -29,6 +29,38 @@ export function exportVars(clip, side) {
   return o;
 }
 
+/* ---------------------------------------------------------------------
+   Easing. GSAP's eases are not expressible exactly outside GSAP, so both
+   the CSS and the SMIL exporter approximate them with the nearest cubic
+   bezier. One table, so the two never drift apart.
+   --------------------------------------------------------------------- */
+const BEZIER = {
+  power1: [.25, .46, .45, .94], power2: [.22, .61, .36, 1],
+  power3: [.16, .84, .44, 1], power4: [.12, .9, .4, 1],
+  sine: [.39, .58, .57, 1], expo: [.19, 1, .22, 1],
+  circ: [.08, .82, .17, 1], back: [.34, 1.56, .64, 1],
+  elastic: [.34, 1.56, .64, 1], bounce: [.34, 1.56, .64, 1],
+  slow: [.42, 0, .58, 1],
+};
+const IN_BEZIER = [.55, .06, .68, .19];
+const IN_OUT_BEZIER = [.65, .05, .36, 1];
+
+/* Returns [x1,y1,x2,y2], or null when the ease is effectively linear. */
+export function easeBezier(t) {
+  if (!t || t.ease === 'none' || t.ease === 'rough' || t.ease === 'steps') return null;
+  const base = BEZIER[t.ease];
+  if (!base) return null;
+  if (t.dir === 'in') return IN_BEZIER;
+  if (t.dir === 'inOut') return IN_OUT_BEZIER;
+  return base;
+}
+
+export function cssEase(t) {
+  if (t.ease === 'steps') return 'steps(12)';
+  const b = easeBezier(t);
+  return b ? `cubic-bezier(${b.join(',')})` : 'linear';
+}
+
 /* __RAW__ marks a value that must land in the output as an expression
    rather than a quoted string. */
 export function srcVars(o) {

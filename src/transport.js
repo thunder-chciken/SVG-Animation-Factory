@@ -7,9 +7,32 @@ import { select } from './selection.js';
 import { renderInspector } from './inspector.js';
 import { renderAll } from './render.js';
 
-/* The seconds the timeline currently spans. Every bar position and every
-   drag calculation is expressed against this one number. */
-function viewTotal() { return Math.max(S.tl ? S.tl.duration() : 1, .001); }
+/* The seconds the timeline currently spans. Every bar position, ruler tick
+   and drag calculation is expressed against this one number.
+
+   The span grows to fit the content but never shrinks on its own — that is
+   what lets you drag the longest clip shorter and actually see it happen.
+   Use Fit to pull it back in. */
+const contentDur = () => (S.tl ? S.tl.duration() : 0);
+
+function viewTotal() {
+  const content = contentDur();
+  if (S.view.span < content || S.view.span <= 0) S.view.span = Math.max(content, 1);
+  return Math.max(S.view.span, .001);
+}
+
+export function fitView() {
+  S.view.span = Math.max(contentDur(), .25);
+  renderTracks();
+}
+
+export function zoomView(factor) {
+  // There is no horizontal scroll, so zooming in stops where the content
+  // exactly fills the ruler — everything stays on screen at all times.
+  const floor = Math.max(contentDur(), .25);
+  S.view.span = clamp(S.view.span * factor, floor, 600);
+  renderTracks();
+}
 
 function fmt(s) { return (s < 0 ? 0 : s).toFixed(2); }
 
@@ -18,8 +41,11 @@ export function syncScrub() {
   const d = S.tl.duration() || 0;
   $('#scrub').value = d ? (S.tl.progress() * 1000) : 0;
   $('#tcode').textContent = `${fmt(d ? S.tl.time() : 0)} / ${fmt(d)}s`;
+  // Positioned against the view span, not the content length — otherwise the
+  // playhead drifts away from the bars whenever the two differ.
   const lane = $('#tlbody').clientWidth - 132;
-  $('#playhead').style.left = (132 + (d ? S.tl.progress() * lane : 0)) + 'px';
+  const span = viewTotal();
+  $('#playhead').style.left = (132 + (d ? (S.tl.time() / span) * lane : 0)) + 'px';
 }
 
 export function renderTracks() {
@@ -140,6 +166,10 @@ function endBarDrag() {
 }
 
 export function bindTransport() {
+  $('#tlZoomOut').onclick = () => zoomView(1.5);
+  $('#tlZoomIn').onclick = () => zoomView(1 / 1.5);
+  $('#tlFit').onclick = fitView;
+
   const tracks = $('#tracks');
   tracks.addEventListener('pointerdown', beginBarDrag);
   tracks.addEventListener('pointermove', moveBarDrag);

@@ -6,6 +6,9 @@ import { parseColor } from './color.js';
 import { reindex } from './ingest.js';
 import { selectedRecs } from './selection.js';
 import { renderLayers, renderSwatches } from './layers.js';
+import { createWheel } from './wheel.js';
+
+let wheel = null;   // live handle to the mounted colour wheel, if any
 
 function ensureDefs() {
   let d = S.svg.querySelector('defs');
@@ -139,7 +142,8 @@ function renderPaint() {
       p.type === 'solid' ? p.solid : p.type === 'none' ? 'transparent' : gradCSS()}"></i></div>`;
 
   if (p.type === 'solid') {
-    h += `<div class="ctl"><label>Colour</label>
+    h += `<div id="pWheel"></div>
+      <div class="ctl"><label>Colour</label>
         <input type="color" id="pSolid" value="${p.solid}">
         <input type="text" id="pHex" value="${p.solid}"></div>`;
   }
@@ -187,6 +191,20 @@ function renderPaint() {
 function bindPaint() {
   const p = S.paint, b = $('#paintBody');
   const redraw = () => { applyPaint(); renderPaint(); };
+
+  /* The wheel drives the solid colour. It updates state and repaints the
+     selection directly rather than going through renderPaint(), which would
+     tear down the very element being dragged. */
+  const wheelHost = b.querySelector('#pWheel');
+  if (wheelHost) {
+    wheel = createWheel(wheelHost, hex => {
+      p.solid = hex;
+      const sw = b.querySelector('#pSolid'); if (sw) sw.value = hex;
+      const tx = b.querySelector('#pHex'); if (tx) tx.value = hex;
+      applyPaint();
+    });
+    wheel.set(p.solid);
+  } else wheel = null;
   b.querySelectorAll('[data-role]').forEach(el => el.onclick = () => {
     p.role = el.dataset.role; loadPaint(); renderPaint();
   });
@@ -195,11 +213,17 @@ function bindPaint() {
   });
 
   const bind = (sel, fn, ev = 'input') => { const el = b.querySelector(sel); if (el) el.addEventListener(ev, fn); };
-  bind('#pSolid', e => { p.solid = e.target.value; applyPaint(); const t = b.querySelector('#pHex'); if (t) t.value = p.solid; });
+  bind('#pSolid', e => {
+    p.solid = e.target.value; applyPaint();
+    const t = b.querySelector('#pHex'); if (t) t.value = p.solid;
+    wheel?.set(p.solid);
+  });
   bind('#pHex', e => {
     const c = parseColor(e.target.value); if (c?.hex) {
       p.solid = c.hex;
-      const s2 = b.querySelector('#pSolid'); if (s2) s2.value = c.hex; applyPaint();
+      const s2 = b.querySelector('#pSolid'); if (s2) s2.value = c.hex;
+      applyPaint();
+      wheel?.set(c.hex);
     }
   });
   bind('#pAngleR', e => { p.angle = +e.target.value; b.querySelector('#pAngleN').value = p.angle; applyPaint(); });

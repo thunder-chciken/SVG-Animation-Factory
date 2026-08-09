@@ -1,6 +1,6 @@
 import { S } from '../state.js';
 import { FILTER_KEYS, FILTER_FN } from '../filters.js';
-import { clipSelector } from './shared.js';
+import { clipSelector, cssEase } from './shared.js';
 
 const SUPPORTED = new Set(['x', 'y', 'scale', 'scaleX', 'scaleY', 'rotation', 'skewX', 'skewY', 'opacity']);
 
@@ -44,17 +44,3 @@ export function genCSS() {
   return css;
 }
 
-function cssEase(t) {
-  const map = {
-    none: 'linear', power1: 'cubic-bezier(.25,.46,.45,.94)', power2: 'cubic-bezier(.22,.61,.36,1)',
-    power3: 'cubic-bezier(.16,.84,.44,1)', power4: 'cubic-bezier(.12,.9,.4,1)',
-    sine: 'cubic-bezier(.39,.58,.57,1)', expo: 'cubic-bezier(.19,1,.22,1)',
-    circ: 'cubic-bezier(.08,.82,.17,1)', back: 'cubic-bezier(.34,1.56,.64,1)',
-    elastic: 'cubic-bezier(.34,1.56,.64,1)', bounce: 'cubic-bezier(.34,1.56,.64,1)',
-    steps: 'steps(12)', slow: 'ease-in-out', rough: 'linear',
-  };
-  let e = map[t.ease] || 'ease-out';
-  if (t.dir === 'in' && t.ease.startsWith('power')) e = 'cubic-bezier(.55,.06,.68,.19)';
-  if (t.dir === 'inOut' && t.ease.startsWith('power')) e = 'cubic-bezier(.65,.05,.36,1)';
-  return e;
-}

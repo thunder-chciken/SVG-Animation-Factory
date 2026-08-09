@@ -11,6 +11,16 @@
 #drop span{font-size:10.5px;line-height:1.5;display:block}
 
 /* ---------- layer tree ---------- */
+#layers{position:relative}
+#layerDrop{
+  position:absolute;left:0;right:0;height:2px;background:var(--amber);display:none;
+  z-index:4;pointer-events:none;box-shadow:0 0 7px rgba(255,176,32,.85);
+}
+#layerDrop::before{
+  content:'';position:absolute;left:0;top:-3px;width:8px;height:8px;border-radius:50%;
+  background:var(--amber);
+}
+.layer.dragging{opacity:.45;background:var(--panel3)}
 .layer{
   display:flex;align-items:center;gap:6px;padding:4px 8px;cursor:pointer;
   border-bottom:1px solid rgba(255,255,255,.03);user-select:none;position:relative;

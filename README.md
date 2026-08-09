@@ -11,13 +11,18 @@ leaves the browser.
 **Index** — parses any SVG and builds a labelled element tree. Shapes are named by
 their colour and kind ("crimson shape 3") rather than by opaque path ids, and every
 colour in the file becomes a swatch you can click to select all its users at once.
+The tree is ordered front-most first, the way Photoshop and Illustrator do it, and
+rows drag to restack — dropping one above another puts it in front.
+
+**Paint** — double-click anything on the canvas for an HSV colour wheel: hue ring
+outside, saturation/value square inside, with a hex field and eyedropper alongside.
 
 **Separate** — the part that makes real logos animatable:
 - split live `<text>` into one element per character or word, positioned by glyph metrics
 - explode a welded compound path into separate shapes, welding each counter (the hole
   in O, A, B…) back onto its own glyph so letters don't turn into blobs
 
-**Paint** — solid fills, linear and radial gradients written as real `<linearGradient>` /
+**Fills** — solid colours, linear and radial gradients written as real `<linearGradient>` /
 `<radialGradient>` nodes in `<defs>`, with a sampler that reads back what's already there.
 
 **Icons** — search 200,000+ open-source icons from [Iconify](https://icon-sets.iconify.design/)
@@ -35,7 +40,9 @@ and a scrubable timeline.
 clip starts at zero rather than queueing behind the last one, so you can stack several
 effects on one element or drive different elements at once. Drag a bar to move it in
 time; drag either edge to retime it. Switch "Place at" to *After previous* when you do
-want a sequence.
+want a sequence. The ruler has its own zoom — it grows to fit but never shrinks on its
+own, so shortening the longest clip is something you can actually see. **Fit** pulls it
+back in.
 
 **Undo** — `Ctrl+Z` / `Ctrl+Shift+Z` across everything: clips, paint, splits, moves and
 icon inserts. Steps are coalesced per gesture, so dragging a slider is one undo, not forty.
@@ -45,10 +52,15 @@ icon inserts. Steps are coalesced per gesture, so dragging a slider is one undo,
 | Tab | Output |
 |---|---|
 | GSAP JS | A `gsap.matchMedia()` block scoped to `#saf-root`, reduced-motion aware |
+| Animated SVG | One self-contained SMIL `.svg` — no JavaScript, works in `<img>` and CSS |
 | Standalone HTML | Self-contained page, GSAP from CDN |
 | WordPress / Bricks | `functions.php` enqueue + child-theme JS file + markup notes |
 | CSS keyframes | Transform, opacity and filter clips (no draw-on or motion paths) |
 | Indexed SVG | The cleaned markup with the ids the generated code targets |
+
+Each tab carries its own panel explaining what the format is, what it can and can't
+do, and how to put it on a page. The Animated SVG tab additionally reports what your
+particular timeline loses in the conversion, rather than dropping it silently.
 
 ## Running it
 
@@ -96,9 +108,10 @@ src/
   presets.js          the preset library
   inspector.js        right panel
   timeline.js         clip list → live GSAP timeline
-  transport.js        playback controls, lanes, bar dragging
+  transport.js        playback controls, lanes, bar dragging, ruler zoom
   history.js          snapshot undo/redo
   icons.js            Iconify search and insertion
+  wheel.js            HSV colour wheel
   filters.js          CSS filter functions shared with the exporters
   project.js          localStorage session + .saf.json files
   render.js           the one full-UI repaint
@@ -146,3 +159,11 @@ In the icon browser, hold `Shift` while clicking to insert several without closi
   past the current end of the timeline.
 - The only network calls in the app are to `api.iconify.design`, and only while the icon
   browser is open.
+- Exports clear the playhead before serialising. GSAP writes the current frame into
+  inline styles and the `transform` attribute, so cloning mid-preview would bake that
+  frame in — harmless in the GSAP exports, which overwrite it immediately, but fatal in
+  the SMIL file, whose animations add to whatever base state they find.
+- SMIL easing is sampled from GSAP's own ease function rather than approximated with
+  `keySplines`. SMIL requires every spline control point to sit inside 0–1, and the
+  eases people actually reach for — `back`, `elastic`, `bounce` — all overshoot. An
+  out-of-range control point makes the element invalid and the effect disappears.

@@ -22,6 +22,12 @@ export const S = {
   stagger: { amount: 0, from: 'start', grid: false, axis: '', ease: 'none' },
   loopTweens: [],
 
+  // Seconds the timeline ruler spans. Deliberately NOT derived from the
+  // content on every paint: if the view always shrank to fit, dragging the
+  // longest clip shorter would shrink the ruler with it and the bar would
+  // redraw at exactly the same width, looking like the edit never took.
+  view: { span: 0 },
+
   // paint editor
   gradId: 0,
   paint: {

@@ -45,7 +45,9 @@
       </div>
       <input type="file" id="file" accept=".svg,image/svg+xml" hidden>
 
-      <div class="phead">Elements <span class="cnt" id="layerCount">0</span></div>
+      <div class="phead">Elements
+        <span class="hint" style="text-transform:none;letter-spacing:0;font-size:9.5px">top = front</span>
+        <span class="cnt" id="layerCount">0</span></div>
       <div class="row" style="padding:6px 8px 4px;margin:0">
         <input type="text" id="search" placeholder="Filter by name, tag or color…" style="flex:1">
       </div>
@@ -110,7 +112,11 @@
       <div id="timeline">
         <div class="phead">Timeline
           <span class="hint" style="text-transform:none;letter-spacing:0;font-size:9.5px">drag a bar to move · drag its edge to retime</span>
-          <span class="cnt"><span id="clipCount">0</span> lanes</span>
+          <span class="spacer"></span>
+          <button class="btn xs gho" id="tlZoomOut" title="Show more time">−</button>
+          <button class="btn xs gho" id="tlZoomIn" title="Show less time">+</button>
+          <button class="btn xs gho" id="tlFit" title="Fit the ruler to the animation">Fit</button>
+          <span class="cnt" style="margin-left:8px"><span id="clipCount">0</span> lanes</span>
         </div>
         <div id="ruler"></div>
         <div id="tlbody">
@@ -138,6 +144,7 @@
     <button class="btn sm gho" id="btnCloseModal">Close</button>
   </header>
   <div class="tabs" id="expTabs"></div>
+  <div id="expDoc"></div>
   <div class="code"><pre id="expCode"></pre></div>
 </div></div>
 
