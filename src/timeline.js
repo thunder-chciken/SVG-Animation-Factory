@@ -90,8 +90,12 @@ function applyDraw(clip, nodes, from, to) {
 export function buildTimeline() {
   if (S.tl) { S.tl.kill(); S.tl = null; }
   resetStage();
+  const lc = S.loopCfg;
   const tl = gsap.timeline({
-    paused: true, repeat: S.loop ? -1 : 0,
+    paused: true,
+    repeat: lc.on ? lc.count : 0,
+    repeatDelay: lc.on ? (lc.delay || 0) : 0,
+    yoyo: lc.on ? !!lc.yoyo : false,
     onUpdate() { syncScrub(); },
   });
   let cursor = 0, prevStart = 0, prevEnd = 0;

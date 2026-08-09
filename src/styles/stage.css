@@ -13,6 +13,7 @@
 #overlay{position:absolute;inset:0;pointer-events:none;z-index:5}
 #overlay rect{fill:none;stroke:var(--sel);stroke-width:1;vector-effect:non-scaling-stroke}
 #overlay rect.hot{stroke:var(--amber);stroke-dasharray:3 3;animation:ants .6s linear infinite}
+#overlay rect#marquee{fill:rgba(77,163,255,.12);stroke:var(--sel);stroke-dasharray:4 3}
 @keyframes ants{to{stroke-dashoffset:-6}}
 #empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   flex-direction:column;gap:10px;color:var(--dimmer);text-align:center;pointer-events:none}

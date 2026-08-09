@@ -15,7 +15,9 @@ export const S = {
   tl: null,
   uid: 0,
   clipId: 0,
-  loop: true,
+  loop: true,                 // kept in sync with loopCfg.on for older projects
+  // How the whole composition repeats, as opposed to a single clip's repeat.
+  loopCfg: { on: true, count: -1, delay: 0, yoyo: false },   // count -1 = forever
   tool: 'pick',
   sliderTarget: 'to',   // sliders drive FROM or TO
   trigger: { mode: 'load', start: 'top 80%', end: 'bottom 20%', scrub: false, once: true, markers: false },

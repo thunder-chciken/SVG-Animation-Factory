@@ -58,18 +58,42 @@ function writeGradient() {
   return `url(#${p.gradId})`;
 }
 
+/* Which nodes a paint actually lands on.
+
+   Selecting a <g> and setting fill on it looks like nothing happened,
+   because every child carries its own fill and wins. Illustrator and Figma
+   both nest heavily, so painting has to reach the leaves. */
+const PAINTABLE = new Set(['path', 'rect', 'circle', 'ellipse', 'line', 'polyline',
+                           'polygon', 'text', 'tspan', 'use', 'image']);
+
+function paintTargets(node) {
+  if (PAINTABLE.has(node.tagName.toLowerCase())) return [node];
+  const leaves = [...node.querySelectorAll('*')]
+    .filter(n => PAINTABLE.has(n.tagName.toLowerCase()));
+  return leaves.length ? leaves : [node];
+}
+
 function applyPaint() {
   const p = S.paint, recs = selectedRecs();
   if (!recs.length) return;
   const value = p.type === 'none' ? 'none'
               : p.type === 'solid' ? p.solid
               : writeGradient();
-  recs.forEach(r => {
-    r.node.setAttribute(p.role, value);
-    r.node.style.removeProperty(p.role);          // beat any inline style rule
-    r.node.setAttribute(p.role + '-opacity', round(p.alpha, 3));
-    if (p.role === 'stroke' && p.type !== 'none' && !r.node.getAttribute('stroke-width'))
-      r.node.setAttribute('stroke-width', 2);
+
+  const nodes = new Set();
+  recs.forEach(r => paintTargets(r.node).forEach(n => nodes.add(n)));
+
+  nodes.forEach(node => {
+    // Inline style, not just the attribute. Illustrator and Figma export a
+    // <style> block with class rules, and a class rule outranks a
+    // presentation attribute — set only the attribute and the shape visibly
+    // does not change. Inline style beats both.
+    node.style.setProperty(p.role, value);
+    node.setAttribute(p.role, value);
+    node.style.setProperty(p.role + '-opacity', round(p.alpha, 3));
+    node.setAttribute(p.role + '-opacity', round(p.alpha, 3));
+    if (p.role === 'stroke' && p.type !== 'none' && !node.getAttribute('stroke-width'))
+      node.setAttribute('stroke-width', 2);
   });
   const pv = $('#gradPrev'); if (pv) pv.style.background = p.type === 'solid' ? p.solid
     : p.type === 'none' ? 'transparent' : gradCSS();
@@ -94,8 +118,11 @@ function refreshIndexSoon() {
 function loadPaint() {
   const rec = selectedRecs()[0]; if (!rec) return;
   const p = S.paint;
-  const raw = (rec.node.getAttribute(p.role) || '').trim();
-  const op = parseFloat(rec.node.getAttribute(p.role + '-opacity'));
+  // read from the first node the paint would actually land on, not the group
+  const src = paintTargets(rec.node)[0];
+  const raw = (src.style.getPropertyValue(p.role) || src.getAttribute(p.role)
+    || getComputedStyle(src)[p.role] || '').trim();
+  const op = parseFloat(src.getAttribute(p.role + '-opacity'));
   p.alpha = isNaN(op) ? 1 : op;
   p.gradId = null;
   if (!raw || raw === 'none') { p.type = raw === 'none' ? 'none' : p.type; return; }

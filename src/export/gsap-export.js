@@ -20,8 +20,13 @@ export function genGSAP() {
   }
   out += `\n  gsap.matchMedia().add('(prefers-reduced-motion: no-preference)', () => {\n`;
 
+  const lc = S.loopCfg;
   const tlOpts = [`defaults: { ease: 'power2.out' }`];
-  if (S.loop && tg.mode === 'load') tlOpts.push('repeat: -1');
+  if (lc.on && tg.mode === 'load') {
+    tlOpts.push(`repeat: ${lc.count}`);
+    if (lc.delay) tlOpts.push(`repeatDelay: ${round(lc.delay, 3)}`);
+    if (lc.yoyo) tlOpts.push('yoyo: true');
+  }
   if (tg.mode === 'click' || tg.mode === 'hover') tlOpts.push('paused: true');
   if (tg.mode === 'scroll') tlOpts.push(`scrollTrigger: { trigger: root, start: '${tg.start}', once: ${tg.once}${tg.markers ? ', markers: true' : ''} }`);
   if (tg.mode === 'scrub') tlOpts.push(`scrollTrigger: { trigger: root, start: '${tg.start}', end: '${tg.end}', scrub: 1${tg.markers ? ', markers: true' : ''} }`);

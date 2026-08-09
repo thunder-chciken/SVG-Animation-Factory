@@ -7,6 +7,7 @@ import { S, toast, onDirty } from './state.js';
 import { mountSVG, maxUid } from './ingest.js';
 import { buildTimeline } from './timeline.js';
 import { renderAll } from './render.js';
+import { syncLoopUI } from './transport.js';
 
 const KEY = 'saf:session:v1';
 const FORMAT = 'saf-project';
@@ -28,7 +29,8 @@ export function serialize() {
     svg: liveMarkup(),
     clips: S.clips,
     trigger: S.trigger,
-    loop: S.loop,
+    loop: S.loopCfg.on,
+    loopCfg: S.loopCfg,
     hidden: S.items.filter(i => i.hidden).map(i => i.uid),
     uid: S.uid,
     clipId: S.clipId,
@@ -41,7 +43,9 @@ export function serialize() {
 export function applyClipState(p) {
   S.clips = Array.isArray(p.clips) ? p.clips : [];
   if (p.trigger) Object.assign(S.trigger, p.trigger);
-  S.loop = p.loop !== false;
+  // Projects saved before loop settings existed carry only the boolean.
+  Object.assign(S.loopCfg, { on: p.loop !== false, count: -1, delay: 0, yoyo: false }, p.loopCfg || {});
+  S.loop = S.loopCfg.on;
   S.clipId = Math.max(p.clipId || 0, S.clips.length);
   S.uid = Math.max(p.uid || 0, maxUid());
   S.gradId = p.gradId || 0;
@@ -54,6 +58,7 @@ export function applyClipState(p) {
 
   buildTimeline();
   renderAll();
+  syncLoopUI();
   return S.clips.length;
 }
 

@@ -107,6 +107,64 @@ export function descendants(uid) {
 }
 
 let DRAG = null;
+let BAND = null;
+
+/* Rubber-band select. Dragging from empty canvas used to do nothing at all,
+   which reads as "I can't select more than one thing" — the gesture every
+   canvas app answers with a marquee. Shift keeps the existing selection. */
+function bandRect() {
+  let el = $('#marquee');
+  if (!el) {
+    el = document.createElementNS(NS, 'rect');
+    el.setAttribute('id', 'marquee');
+    $('#overlay').appendChild(el);
+  }
+  return el;
+}
+
+function beginBand(e) {
+  BAND = { x0: e.clientX, y0: e.clientY, add: e.shiftKey, base: [...S.sel], moved: false };
+}
+
+function moveBand(e) {
+  if (!BAND) return;
+  const dx = Math.abs(e.clientX - BAND.x0), dy = Math.abs(e.clientY - BAND.y0);
+  if (!BAND.moved && dx < 4 && dy < 4) return;
+  BAND.moved = true;
+
+  const wrap = $('#stagewrap').getBoundingClientRect();
+  const x = Math.min(BAND.x0, e.clientX), y = Math.min(BAND.y0, e.clientY);
+  const w = Math.abs(e.clientX - BAND.x0), h = Math.abs(e.clientY - BAND.y0);
+
+  const r = bandRect();
+  r.setAttribute('x', x - wrap.x); r.setAttribute('y', y - wrap.y);
+  r.setAttribute('width', w); r.setAttribute('height', h);
+
+  // anything the band touches, in screen space so it matches what is drawn
+  const box = { left: x, top: y, right: x + w, bottom: y + h };
+  const hits = S.items.filter(it => {
+    if (it.kind === 'group' || !it.node.isConnected) return false;
+    let b; try { b = it.node.getBoundingClientRect(); } catch (err) { return false; }
+    if (!b.width && !b.height) return false;
+    return b.left < box.right && b.right > box.left && b.top < box.bottom && b.bottom > box.top;
+  }).map(it => it.uid);
+
+  S.sel = new Set(BAND.add ? [...BAND.base, ...hits] : hits);
+  renderLayers(); renderInspector();
+  // redraw the band last — renderOverlay() clears the overlay
+  renderOverlay();
+  const r2 = bandRect();
+  r2.setAttribute('x', x - wrap.x); r2.setAttribute('y', y - wrap.y);
+  r2.setAttribute('width', w); r2.setAttribute('height', h);
+}
+
+function endBand() {
+  if (!BAND) return;
+  const { moved } = BAND;
+  BAND = null;
+  $('#marquee')?.remove();
+  if (moved) renderOverlay();
+}
 
 function pickAt(e) {
   const rec = recFromNode(e.target);
@@ -121,7 +179,12 @@ export function bindStage() {
   stage.addEventListener('pointerdown', e => {
     if (e.button !== 0) return;
     const target = pickAt(e);
-    if (!target) { select([]); return; }
+    if (!target) {
+      if (!e.shiftKey) select([]);
+      beginBand(e);
+      try { stage.setPointerCapture(e.pointerId); } catch (err) { /* capture is a nicety */ }
+      return;
+    }
     const kids = target.kind === 'group' && S.tool === 'group'
       ? descendants(target.uid).concat([target.uid]) : [target.uid];
     // clicking outside the current selection re-selects before the drag starts
@@ -134,6 +197,7 @@ export function bindStage() {
   });
 
   stage.addEventListener('pointermove', e => {
+    if (BAND) { moveBand(e); return; }
     if (!DRAG) {
       const rec = recFromNode(e.target);
       const u = rec ? rec.uid : null;
@@ -162,6 +226,7 @@ export function bindStage() {
   });
 
   const endDrag = () => {
+    if (BAND) { endBand(); return; }
     if (!DRAG) return;
     const moved = DRAG.moved; DRAG = null;
     stage.style.cursor = '';

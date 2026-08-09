@@ -14,8 +14,14 @@ colour in the file becomes a swatch you can click to select all its users at onc
 The tree is ordered front-most first, the way Photoshop and Illustrator do it, and
 rows drag to restack — dropping one above another puts it in front.
 
+**Select** — click, shift-click to add, or drag from empty canvas to rubber-band a
+group of shapes. Whatever is selected is what a preset applies to.
+
 **Paint** — double-click anything on the canvas for an HSV colour wheel: hue ring
 outside, saturation/value square inside, with a hex field and eyedropper alongside.
+Painting a group reaches its leaves, and colour is written as inline style as well as
+an attribute so it still lands on Illustrator/Figma exports that drive fills from a
+`<style>` block.
 
 **Separate** — the part that makes real logos animatable:
 - split live `<text>` into one element per character or word, positioned by glyph metrics
@@ -43,6 +49,11 @@ time; drag either edge to retime it. Switch "Place at" to *After previous* when 
 want a sequence. The ruler has its own zoom — it grows to fit but never shrinks on its
 own, so shortening the longest clip is something you can actually see. **Fit** pulls it
 back in.
+
+**Looping** — the ↻ button opens loop settings for the composition as a whole: on/off,
+how many cycles (or forever), a pause between them, and ping-pong. Separate from a
+single lane's own repeat, and carried into the GSAP, HTML, WordPress and Animated SVG
+exports.
 
 **Undo** — `Ctrl+Z` / `Ctrl+Shift+Z` across everything: clips, paint, splits, moves and
 icon inserts. Steps are coalesced per gesture, so dragging a slider is one undo, not forty.
@@ -163,6 +174,12 @@ In the icon browser, hold `Shift` while clicking to insert several without closi
   inline styles and the `transform` attribute, so cloning mid-preview would bake that
   frame in — harmless in the GSAP exports, which overwrite it immediately, but fatal in
   the SMIL file, whose animations add to whatever base state they find.
+- Paint writes an inline style, not just a presentation attribute. A `<style>` class
+  rule outranks a presentation attribute, and Illustrator and Figma both export fills
+  that way — setting only the attribute leaves the shape visibly unchanged.
+- Picking a preset while the selection differs from the active clip's targets creates a
+  new lane instead of rewriting that clip. Otherwise selecting new elements and clicking
+  a preset silently re-skins the previous lane and appears to do nothing.
 - SMIL easing is sampled from GSAP's own ease function rather than approximated with
   `keySplines`. SMIL requires every spline control point to sit inside 0–1, and the
   eases people actually reach for — `back`, `elastic`, `bounce` — all overshoot. An

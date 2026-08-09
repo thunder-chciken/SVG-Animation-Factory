@@ -25,6 +25,7 @@ export function smilGaps() {
   if (UNSUPPORTED_PROPS.some(on)) gaps.push('3D transforms and percentage offsets (rotationX/Y, perspective, xPercent/yPercent)');
   if (/scroll|scrub/.test(S.trigger.mode)) gaps.push(`the "${S.trigger.mode}" trigger — an SVG file cannot see the page scroll, so it plays on load instead`);
   if (S.trigger.mode === 'hover') gaps.push('the hover trigger — starts on click instead');
+  if (S.loopCfg.on && S.loopCfg.yoyo) gaps.push('ping-pong looping — SMIL replays each cycle forwards');
   return gaps;
 }
 
@@ -210,7 +211,9 @@ export function genSMIL() {
   const clips = S.clips.filter(c => c.enabled && c.targets.length);
   const total = S.tl ? S.tl.duration() : 0;
   const onClick = S.trigger.mode === 'click' || S.trigger.mode === 'hover';
-  const loopId = (S.loop && !onClick && total > 0) ? 'safLoop' : null;
+  const lc = S.loopCfg;
+  const loopId = (lc.on && !onClick && total > 0) ? 'safLoop' : null;
+  const cycle = total + (lc.delay || 0);
   // Anchor: the master clock when looping, the root's click when triggered,
   // otherwise plain document time.
   const ref = loopId ? `${loopId}.begin` : (onClick ? 'saf-root.click' : null);
@@ -254,8 +257,9 @@ export function genSMIL() {
     clock.setAttribute('id', loopId);
     clock.setAttribute('attributeName', 'opacity');
     clock.setAttribute('values', '1;1');
-    clock.setAttribute('dur', `${round(total, 3)}s`);
-    clock.setAttribute('repeatCount', 'indefinite');
+    // one cycle = the timeline plus whatever pause was asked for between loops
+    clock.setAttribute('dur', `${round(cycle, 3)}s`);
+    clock.setAttribute('repeatCount', lc.count < 0 ? 'indefinite' : String(lc.count + 1));
     root.insertBefore(clock, root.firstChild);
   }
   if (S.trigger.mode === 'click' || S.trigger.mode === 'hover') {

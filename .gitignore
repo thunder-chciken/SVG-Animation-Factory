@@ -13,3 +13,11 @@ Thumbs.db
 # The original single-file monolith, superseded by src/. Left on disk for
 # reference — delete it whenever you're happy with the split.
 svg-animation-factory.html
+
+# Files the app itself downloads land in the project root during testing.
+sample.svg
+sample.html
+sample*.js
+sample*.css
+sample*.php
+sample (*).*

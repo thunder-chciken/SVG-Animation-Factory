@@ -165,6 +165,69 @@ function endBarDrag() {
   rebuild(true); renderAll(); markDirty();
 }
 
+/* ---------------------------------------------------------------------
+   Loop settings — how the whole composition repeats, not one lane.
+   --------------------------------------------------------------------- */
+export function syncLoopUI() {
+  const lc = S.loopCfg;
+  S.loop = lc.on;                       // older projects and exports read this
+  $('#tLoop').classList.toggle('on', lc.on);
+  $('#loopSummary').textContent = !lc.on ? 'no loop'
+    : (lc.count < 0 ? '∞' : `${lc.count + 1}×`) +
+      (lc.delay ? ` · ${round(lc.delay, 2)}s gap` : '') +
+      (lc.yoyo ? ' · ping-pong' : '');
+  const on = $('#loopOn'); if (on) on.checked = lc.on;
+  const c = $('#loopCount'); if (c) c.value = String(lc.count);
+  const dr = $('#loopDelayR'); if (dr) dr.value = lc.delay;
+  const dn = $('#loopDelayN'); if (dn) dn.value = lc.delay;
+  const yy = $('#loopYoyo'); if (yy) yy.checked = !!lc.yoyo;
+  ['#loopCount', '#loopDelayR', '#loopDelayN', '#loopYoyo'].forEach(sel => {
+    const el = $(sel); if (el) el.disabled = !lc.on;
+  });
+}
+
+function bindLoopPanel() {
+  const lc = S.loopCfg;
+  const pop = $('#loopPop');
+  const apply = () => { syncLoopUI(); rebuild(true); markDirty(); };
+
+  $('#tLoop').onclick = () => {
+    if (pop.classList.contains('on')) { pop.classList.remove('on'); return; }
+    const b = $('#tLoop').getBoundingClientRect();
+    pop.classList.add('on');
+    const h = pop.offsetHeight || 300;
+    pop.style.left = clamp(b.left - 8, 8, innerWidth - (pop.offsetWidth || 286) - 8) + 'px';
+    pop.style.top = clamp(b.top - h - 10, 8, innerHeight - h - 8) + 'px';
+    syncLoopUI();
+  };
+  $('#loopClose').onclick = () => pop.classList.remove('on');
+  $('#loopOn').onchange = e => { lc.on = e.target.checked; apply(); };
+  $('#loopCount').onchange = e => { lc.count = parseInt(e.target.value, 10); apply(); };
+  $('#loopYoyo').onchange = e => { lc.yoyo = e.target.checked; apply(); };
+  const setDelay = v => { lc.delay = Math.max(0, parseFloat(v) || 0); apply(); };
+  $('#loopDelayR').oninput = e => setDelay(e.target.value);
+  $('#loopDelayN').oninput = e => setDelay(e.target.value);
+
+  // drag the panel by its header, same as the paint popover
+  const head = $('#loopDrag'); let d = null;
+  head.addEventListener('pointerdown', e => {
+    if (e.target.id === 'loopClose') return;
+    const r = pop.getBoundingClientRect();
+    d = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+    head.classList.add('grabbing');
+    try { head.setPointerCapture(e.pointerId); } catch (err) { /* capture is a nicety */ }
+  });
+  head.addEventListener('pointermove', e => {
+    if (!d) return;
+    pop.style.left = clamp(e.clientX - d.dx, 4, innerWidth - pop.offsetWidth - 4) + 'px';
+    pop.style.top = clamp(e.clientY - d.dy, 4, innerHeight - pop.offsetHeight - 4) + 'px';
+  });
+  ['pointerup', 'pointercancel'].forEach(ev =>
+    head.addEventListener(ev, () => { d = null; head.classList.remove('grabbing'); }));
+
+  syncLoopUI();
+}
+
 export function bindTransport() {
   $('#tlZoomOut').onclick = () => zoomView(1.5);
   $('#tlZoomIn').onclick = () => zoomView(1 / 1.5);
@@ -189,8 +252,7 @@ export function bindTransport() {
   };
   $('#tRew').onclick = () => { S.tl && S.tl.pause(0); loops(t => t.pause(0)); $('#tPlay').textContent = '▶'; syncScrub(); };
   $('#tEnd').onclick = () => { S.tl && S.tl.pause(S.tl.duration()); loops(t => t.pause()); $('#tPlay').textContent = '▶'; syncScrub(); };
-  $('#tLoop').onclick = e => { S.loop = !S.loop; e.currentTarget.classList.toggle('on', S.loop); rebuild(); };
-  $('#tLoop').classList.toggle('on', S.loop);
+  bindLoopPanel();
   $('#scrub').oninput = e => {
     if (!S.tl) return;
     S.tl.pause(); $('#tPlay').textContent = '▶';

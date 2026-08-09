@@ -63,8 +63,16 @@ export function presetsSection() {
      <p class="hint" style="margin-top:7px">Applies to the active clip, or creates one from the current selection.</p>`);
 }
 
+const drivesExactly = (clip, sel) =>
+  !!clip && clip.targets.length === sel.size && clip.targets.every(u => sel.has(u));
+
 export function applyPreset(i) {
   let clip = S.clips.find(c => c.id === S.activeClip);
+  // If the selection has moved on from what the active clip drives, the user
+  // means "apply this to what I have selected" — not "rewrite that other
+  // clip". Without this, selecting new elements and picking a preset silently
+  // retargets nothing and re-skins the previous lane instead.
+  if (S.sel.size && !drivesExactly(clip, S.sel)) clip = null;
   if (!clip) {
     if (!S.sel.size) { toast('Select at least one element first.', 'err'); return; }
     clip = newClip([...S.sel]); S.clips.push(clip); S.activeClip = clip.id;
