@@ -16,7 +16,7 @@ const KEY = 'saf:workspace:v1';
    Anything missing from a saved order is appended, so adding a section in
    a later version does not vanish for people with a stored layout. */
 export const DEFAULT_ORDER = [
-  'xform', 'presets', 'timing', 'loop', 'stagger', 'origin',
+  'xform', 'align', 'presets', 'timing', 'loop', 'stagger', 'origin',
   'pos', 'scale', 'look', 'fx', 'draw', 'mp', 'trig',
 ];
 

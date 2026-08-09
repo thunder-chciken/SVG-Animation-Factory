@@ -64,9 +64,17 @@ tile and insertion needs no network at all. Each icon keeps its set's licence, s
 hover. Icon markup goes through the same sanitiser as a dropped file, and internal ids
 are namespaced so two icons can never collide.
 
-**Animate** — 29 animatable properties across five groups (position, transform + 3D,
-opacity/colour, CSS filters, line drawing), 41 presets, per-clip stagger, motion paths,
-and a scrubable timeline.
+**Animate** — 30 animatable properties across five groups (position, transform + 3D,
+opacity/colour/letter-spacing, CSS filters, line drawing), **78 one-click presets**
+filtered by category, per-clip stagger, motion paths, and a scrubable timeline. Text
+presets carry their own stagger, so they spread across split letters on click.
+
+**Align** — left / centre / right, top / middle / bottom, centre-both, and even
+distribution, relative to the selection or to the artboard. Plus a snapping grid in
+SVG user units, so it holds at any zoom, with an optional on-canvas overlay.
+
+**Navigate** — a Premiere-style zoom dropdown (Fit, 10% … 1600%) where percentages
+mean true 1:1, not CSS scale. `Home` puts the view back to fit and centred.
 
 **Lanes** — every clip is its own lane, and lanes run **in parallel by default**: a new
 clip starts at zero rather than queueing behind the last one, so you can stack several
@@ -209,6 +217,7 @@ src/
   workspace.js        panel order and open state
   transform.js        static move / scale / rotate / skew
   viewport.js         canvas zoom and pan
+  align.js            align, distribute, grid snapping
   text.js             text creation and editing
   menu.js             File menu, recent projects, save handles
   raster.js           PNG and JPEG export
@@ -231,6 +240,7 @@ hoisted function bindings. Keep it that way: put new wiring in `main.js`.
 | Key | Action |
 |---|---|
 | `T` | Text tool |
+| `Home` | Reset the view — fit and centred |
 | `Alt` + middle-drag | Zoom · middle-drag pans · `Space`+drag pans |
 | `Alt`/`Ctrl` + wheel | Zoom toward the pointer |
 | `Del` | Delete the selection |

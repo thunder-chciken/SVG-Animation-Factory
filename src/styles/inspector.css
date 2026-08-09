@@ -53,3 +53,18 @@
 .pre:hover{background:var(--panel3);border-color:var(--amber);color:var(--amber)}
 .pre small{display:block;color:var(--dimmer);font-size:9px;margin-top:1px}
 .pre:hover small{color:var(--amber-d)}
+
+/* ---------- align buttons ---------- */
+.aligngrid{display:grid;grid-template-columns:repeat(3,1fr);gap:4px}
+.alignbtn{font-size:14px;line-height:1;padding:6px 0;text-align:center}
+.alignbtn:hover:not([disabled]){border-color:var(--amber);color:var(--amber)}
+
+/* ---------- preset category chips ---------- */
+.pchips{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px}
+.pchip{
+  display:flex;align-items:center;gap:4px;background:var(--panel2);border:1px solid var(--line2);
+  border-radius:11px;padding:3px 8px;font-size:10px;color:var(--dim);cursor:pointer;transition:.12s;
+}
+.pchip:hover{border-color:var(--amber);color:var(--amber)}
+.pchip.on{background:var(--amber);border-color:var(--amber);color:#171307;font-weight:650}
+.pchip i{font-style:normal;font:9px/1 var(--mono);opacity:.65}

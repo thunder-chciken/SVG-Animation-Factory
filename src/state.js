@@ -34,6 +34,9 @@ export const S = {
   // own coordinates never change and exports stay exactly as authored.
   viewport: { zoom: 1, x: 0, y: 0 },
 
+  // Grid snapping, in SVG user units.
+  grid: { on: false, show: false, size: 10 },
+
   // paint editor
   gradId: 0,
   paint: {

@@ -157,7 +157,8 @@ export function bindTop() {
     }
     if (e.key.startsWith('Arrow') && S.sel.size) {
       e.preventDefault();
-      const d = e.shiftKey ? 10 : 1;
+      const d = S.grid.on ? (e.shiftKey ? S.grid.size * 5 : S.grid.size)
+                          : (e.shiftKey ? 10 : 1);
       nudge(e.key === 'ArrowLeft' ? -d : e.key === 'ArrowRight' ? d : 0,
             e.key === 'ArrowUp' ? -d : e.key === 'ArrowDown' ? d : 0);
     }

@@ -2,7 +2,7 @@ import { S } from '../state.js';
 import { FILTER_KEYS, FILTER_FN } from '../filters.js';
 import { clipSelector, cssEase } from './shared.js';
 
-const SUPPORTED = new Set(['x', 'y', 'scale', 'scaleX', 'scaleY', 'rotation', 'skewX', 'skewY', 'opacity']);
+const SUPPORTED = new Set(['x', 'y', 'scale', 'scaleX', 'scaleY', 'rotation', 'skewX', 'skewY', 'opacity', 'letterSpacing']);
 
 export function genCSS() {
   let css = '/* CSS keyframes — transform, opacity and filter clips only.\n';
@@ -28,6 +28,7 @@ export function genCSS() {
       const lines = [];
       if (tf.length) lines.push(`    transform: ${tf.join(' ')};`);
       if (c.props.opacity?.on) lines.push(`    opacity: ${c.props.opacity[side]};`);
+      if (c.props.letterSpacing?.on) lines.push(`    letter-spacing: ${c.props.letterSpacing[side]}px;`);
       if (fl.length) lines.push(`    filter: ${fl.join(' ')};`);
       return lines.join('\n');
     };

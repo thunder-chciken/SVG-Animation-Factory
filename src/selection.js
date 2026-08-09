@@ -9,6 +9,7 @@ import { wrapFor, readXf, patchXf } from './transform.js';
 import { reindex } from './ingest.js';
 import { rebuild } from './timeline.js';
 import { renderAll } from './render.js';
+import { rootBBox, snapDelta } from './align.js';
 
 export function recFromNode(n) {
   while (n && n !== S.svg) {
@@ -28,11 +29,40 @@ export function select(uids, { add = false, toggle = false } = {}) {
 
 export function selectedRecs() { return [...S.sel].map(u => S.byUid.get(u)).filter(Boolean); }
 
+/* Grid lines are drawn in the overlay, in screen space, from the document's
+   user-space step. That keeps them out of the exported SVG entirely while
+   still tracking zoom and pan for free. */
+function drawGrid(ov, wrapRect) {
+  const g = S.grid;
+  let m;
+  try { m = S.svg.getScreenCTM(); } catch (e) { return; }
+  if (!m) return;
+  const stepPx = g.size * Math.hypot(m.a, m.b);
+  if (stepPx < 4) return;                    // too dense to be anything but noise
+
+  const [vx, vy, vw, vh] = (S.svg.getAttribute('viewBox') || '0 0 100 100')
+    .trim().split(/[\s,]+/).map(Number);
+  const P = (x, y) => `${m.a * x + m.c * y + m.e - wrapRect.x},${m.b * x + m.d * y + m.f - wrapRect.y}`;
+
+  let d = '';
+  for (let x = Math.ceil(vx / g.size) * g.size; x <= vx + vw; x += g.size)
+    d += `M${P(x, vy)}L${P(x, vy + vh)}`;
+  for (let y = Math.ceil(vy / g.size) * g.size; y <= vy + vh; y += g.size)
+    d += `M${P(vx, y)}L${P(vx + vw, y)}`;
+  if (!d) return;
+
+  const path = document.createElementNS(NS, 'path');
+  path.setAttribute('id', 'gridLines');
+  path.setAttribute('d', d);
+  ov.appendChild(path);
+}
+
 export function renderOverlay() {
   const ov = $('#overlay'); ov.innerHTML = '';
   if (!S.svg) return;
   const wrapRect = $('#stagewrap').getBoundingClientRect();
   ov.setAttribute('viewBox', `0 0 ${wrapRect.width} ${wrapRect.height}`);
+  if (S.grid.show) drawGrid(ov, wrapRect);
   const draw = (rec, cls) => {
     if (!rec || !rec.node.isConnected) return;
     let b; try { b = rec.node.getBoundingClientRect(); } catch (e) { return; }
@@ -267,6 +297,13 @@ function applyDrag(clientX, clientY, shift) {
     appY = rawY + DRAG.offY;
   }
 
+  // The rail is an explicit constraint, so it outranks the grid — snapping
+  // while locked would drag the element off the line it was locked to.
+  if (S.grid.on && !DRAG.rail && DRAG.box0) {
+    const sn = snapDelta(DRAG.box0, appX, appY);
+    appX = sn.dx; appY = sn.dy;
+  }
+
   DRAG.appX = appX; DRAG.appY = appY;
   DRAG.wraps.forEach(w => patchXf(w.node, { x: w.base.x + appX, y: w.base.y + appY }));
   renderOverlay();
@@ -345,6 +382,9 @@ export function bindStage() {
         const t = readXf(r.node);
         return { node: r.node, base: { x: t.x, y: t.y } };
       });
+      // Snapping aligns the primary element's own bounds to the grid; the
+      // rest of the selection keeps its relative offset.
+      DRAG.box0 = DRAG.wraps.length ? rootBBox(DRAG.wraps[0].node) : null;
       if (!DRAG.wraps.length) { DRAG = null; stage.style.cursor = ''; return; }
     }
 

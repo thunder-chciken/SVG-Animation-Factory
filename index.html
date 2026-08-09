@@ -90,9 +90,21 @@
         <button class="btn sm" id="btnGrid">Checker</button>
         <span style="width:1px;height:20px;background:var(--line)"></span>
         <button class="btn xs gho" id="zoomOut" title="Zoom out">−</button>
-        <button class="btn xs gho" id="zoomPct" title="Reset to 100%">100%</button>
+        <select id="zoomSel" title="Zoom level" style="width:82px">
+          <option value="fit">Fit</option>
+          <option value="10">10%</option>
+          <option value="25">25%</option>
+          <option value="50">50%</option>
+          <option value="75">75%</option>
+          <option value="100">100%</option>
+          <option value="150">150%</option>
+          <option value="200">200%</option>
+          <option value="400">400%</option>
+          <option value="800">800%</option>
+          <option value="1600">1600%</option>
+        </select>
         <button class="btn xs gho" id="zoomIn" title="Zoom in">+</button>
-        <button class="btn xs gho" id="zoomFit" title="Fit the artwork">Fit</button>
+        <button class="btn xs gho" id="zoomHome" title="Reset view — fit and centre (Home)">Home</button>
       </div>
 
       <div id="stagewrap">

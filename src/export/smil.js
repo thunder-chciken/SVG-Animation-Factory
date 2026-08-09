@@ -167,6 +167,7 @@ function animationsFor(clip, rec, index, count, ref) {
   if (P.fill?.on) out.push(animate('fill', clip, val('fill', 'from'), val('fill', 'to'), begin, ref));
   if (P.stroke?.on) out.push(animate('stroke', clip, val('stroke', 'from'), val('stroke', 'to'), begin, ref));
   if (P.strokeWidth?.on) out.push(animate('stroke-width', clip, val('strokeWidth', 'from'), val('strokeWidth', 'to'), begin, ref));
+  if (P.letterSpacing?.on) out.push(animate('letter-spacing', clip, val('letterSpacing', 'from'), val('letterSpacing', 'to'), begin, ref));
 
   // ---- line drawing ----
   if (P.drawStart?.on || P.drawEnd?.on || P.dashGap?.on) {

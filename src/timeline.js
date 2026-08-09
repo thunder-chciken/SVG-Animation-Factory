@@ -43,7 +43,7 @@ function buildVars(clip) {
   const P = clip.props;
   const add = (k, dst, src) => { if (P[k]?.on) { dst[k] = P[k][src]; } };
   ['x', 'y', 'xPercent', 'yPercent', 'scale', 'scaleX', 'scaleY', 'rotation', 'rotationX', 'rotationY',
-   'skewX', 'skewY', 'perspective', 'opacity', 'fill', 'stroke', 'strokeWidth'].forEach(k => {
+   'skewX', 'skewY', 'perspective', 'opacity', 'fill', 'stroke', 'strokeWidth', 'letterSpacing'].forEach(k => {
     add(k, from, 'from'); add(k, to, 'to');
   });
   // filters compose into one string so GSAP can interpolate them together

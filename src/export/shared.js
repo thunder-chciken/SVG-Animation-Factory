@@ -13,7 +13,7 @@ export function clipSelector(clip) {
 export function exportVars(clip, side) {
   const o = {}; const P = clip.props;
   ['x', 'y', 'xPercent', 'yPercent', 'scale', 'scaleX', 'scaleY', 'rotation', 'rotationX', 'rotationY',
-   'skewX', 'skewY', 'perspective', 'opacity', 'fill', 'stroke', 'strokeWidth'].forEach(k => {
+   'skewX', 'skewY', 'perspective', 'opacity', 'fill', 'stroke', 'strokeWidth', 'letterSpacing'].forEach(k => {
     if (P[k]?.on) o[k] = P[k][side];
   });
   const uf = FILTER_KEYS.filter(k => P[k]?.on);

@@ -15,13 +15,54 @@ import { renderOverlay } from './selection.js';
 
 const MIN = 0.05, MAX = 64;
 
+/* CSS scale 1 is "fit": the SVG is laid out to fill the stage, so one user
+   unit is already some arbitrary number of screen pixels. The dropdown talks
+   in real percentages, where 100% means one user unit per CSS pixel, so the
+   two have to be converted through the layout scale. */
+export function baseScale() {
+  if (!S.svg) return 1;
+  const vb = (S.svg.getAttribute('viewBox') || '0 0 100 100').trim().split(/[\s,]+/).map(Number);
+  const w = S.svg.getBoundingClientRect().width;
+  if (!vb[2] || !w) return 1;
+  return (w / vb[2]) / S.viewport.zoom;      // px per user unit at zoom 1
+}
+
+export const currentPercent = () => S.viewport.zoom * baseScale() * 100;
+
+export function setPercent(pct, mx, my) {
+  const base = baseScale();
+  if (!base) return;
+  zoomAt((pct / 100) / base, mx, my);
+}
+
+function syncZoomUI() {
+  const sel = $('#zoomSel');
+  if (!sel) return;
+  const pct = Math.round(currentPercent());
+  const fit = Math.abs(S.viewport.zoom - 1) < 1e-4 && !S.viewport.x && !S.viewport.y;
+  const exact = [...sel.options].find(o => o.value !== 'fit' && Math.abs(+o.value - pct) < 0.5);
+  if (fit) sel.value = 'fit';
+  else if (exact) sel.value = exact.value;
+  else {
+    // Show the real number even when it is not one of the presets.
+    let custom = sel.querySelector('option[data-custom]');
+    if (!custom) {
+      custom = document.createElement('option');
+      custom.dataset.custom = '1';
+      sel.appendChild(custom);
+    }
+    custom.value = String(pct);
+    custom.textContent = pct + '%';
+    sel.value = custom.value;
+  }
+}
+
 export function applyViewport() {
   const v = S.viewport;
   const st = $('#stage');
   st.style.transformOrigin = '50% 50%';
   st.style.transform = `translate(${round(v.x, 2)}px, ${round(v.y, 2)}px) scale(${round(v.zoom, 4)})`;
-  const pct = $('#zoomPct');
-  if (pct) pct.textContent = Math.round(v.zoom * 100) + '%';
+  syncZoomUI();
   renderOverlay();
 }
 
@@ -54,7 +95,7 @@ export function zoomReset() {
 }
 
 /* "Fit" is the untransformed layout, which already letterboxes the artwork
-   inside the stage — so fitting is just going back to 1:1 with no pan. */
+   inside the stage — so fitting is just going back to no zoom and no pan. */
 export const zoomFit = zoomReset;
 
 let NAV = null;      // middle-drag pan / scrubby zoom
@@ -142,10 +183,28 @@ export function bindViewport() {
 
   $('#zoomIn').onclick = () => zoomBy(1.25);
   $('#zoomOut').onclick = () => zoomBy(1 / 1.25);
-  $('#zoomFit').onclick = () => { zoomFit(); toast('Zoom 100%'); };
-  $('#zoomPct').onclick = () => { zoomReset(); toast('Zoom 100%'); };
+  $('#zoomHome').onclick = () => resetView();
+  $('#zoomSel').onchange = e => {
+    const v = e.target.value;
+    if (v === 'fit') zoomFit(); else setPercent(parseFloat(v));
+  };
+
+  window.addEventListener('keydown', e => {
+    if (e.key !== 'Home') return;
+    if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+    e.preventDefault();
+    resetView();
+  });
 
   applyViewport();
+}
+
+/* Home — put the canvas back the way it starts: fitted, centred, no pan.
+   Deliberately a view reset only. Moving the artwork itself back would be a
+   destructive edit hiding behind a navigation key. */
+export function resetView() {
+  zoomFit();
+  toast('View reset — fit and centred');
 }
 
 /* Space is a play/pause shortcut elsewhere; while it is being used to pan we

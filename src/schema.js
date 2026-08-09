@@ -21,11 +21,12 @@ export const SCHEMA = [
   { k: 'skewY',       l: 'Skew Y',       t: 'num', min: -90,   max: 90,   step: .5,  u: '°',  from: 0, to: 0 },
   { k: 'perspective', l: 'Perspective',  t: 'num', min: 0,     max: 2000, step: 10,  u: 'px', from: 0, to: 0 },
  ] },
- { id: 'look', title: 'Opacity & colour', props: [
+ { id: 'look', title: 'Opacity, colour & text', props: [
   { k: 'opacity',     l: 'Opacity',      t: 'num', min: 0, max: 1,  step: .01, u: '',   from: 0, to: 1 },
   { k: 'fill',        l: 'Fill',         t: 'col', from: '#ffb020', to: '#4da3ff' },
   { k: 'stroke',      l: 'Stroke',       t: 'col', from: '#ffb020', to: '#4da3ff' },
   { k: 'strokeWidth', l: 'Stroke width', t: 'num', min: 0, max: 60, step: .1,  u: 'px', from: 1, to: 4 },
+  { k: 'letterSpacing', l: 'Letter spacing', t: 'num', min: -20, max: 90, step: .5, u: 'px', from: 0, to: 0 },
  ] },
  { id: 'fx', title: 'Filters & effects', props: [
   { k: 'blur',       l: 'Blur',       t: 'num', min: 0,    max: 40,  step: .5,  u: 'px', from: 12, to: 0 },
