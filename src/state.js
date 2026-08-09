@@ -46,9 +46,9 @@ export function toast(msg, kind = '') {
 
 /* ---------------------------------------------------------------------
    Dirty signalling. Modules that mutate the document or the clip list
-   call markDirty(); the persistence layer registers the only listener.
-   Routing it through here keeps project.js out of everyone's imports.
+   call markDirty(); persistence and undo history listen. Routing it
+   through here keeps those modules out of everyone else's imports.
    --------------------------------------------------------------------- */
-let dirtyFn = null;
-export function onDirty(fn) { dirtyFn = fn; }
-export function markDirty() { if (dirtyFn) dirtyFn(); }
+const dirtyFns = [];
+export function onDirty(fn) { dirtyFns.push(fn); }
+export function markDirty() { dirtyFns.forEach(fn => fn()); }

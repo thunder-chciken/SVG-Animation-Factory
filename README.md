@@ -20,9 +20,25 @@ colour in the file becomes a swatch you can click to select all its users at onc
 **Paint** — solid fills, linear and radial gradients written as real `<linearGradient>` /
 `<radialGradient>` nodes in `<defs>`, with a sampler that reads back what's already there.
 
+**Icons** — search 200,000+ open-source icons from [Iconify](https://icon-sets.iconify.design/)
+and drop one straight onto the canvas, centred and scaled to fit. Two API calls per
+search (names, then one bulk fetch per set), so previews render without a request per
+tile and insertion needs no network at all. Each icon keeps its set's licence, shown on
+hover. Icon markup goes through the same sanitiser as a dropped file, and internal ids
+are namespaced so two icons can never collide.
+
 **Animate** — 29 animatable properties across five groups (position, transform + 3D,
 opacity/colour, CSS filters, line drawing), 41 presets, per-clip stagger, motion paths,
-and a scrubable timeline with clip bars.
+and a scrubable timeline.
+
+**Lanes** — every clip is its own lane, and lanes run **in parallel by default**: a new
+clip starts at zero rather than queueing behind the last one, so you can stack several
+effects on one element or drive different elements at once. Drag a bar to move it in
+time; drag either edge to retime it. Switch "Place at" to *After previous* when you do
+want a sequence.
+
+**Undo** — `Ctrl+Z` / `Ctrl+Shift+Z` across everything: clips, paint, splits, moves and
+icon inserts. Steps are coalesced per gesture, so dragging a slider is one undo, not forty.
 
 **Export** — five formats:
 
@@ -80,7 +96,9 @@ src/
   presets.js          the preset library
   inspector.js        right panel
   timeline.js         clip list → live GSAP timeline
-  transport.js        playback controls and clip bars
+  transport.js        playback controls, lanes, bar dragging
+  history.js          snapshot undo/redo
+  icons.js            Iconify search and insertion
   filters.js          CSS filter functions shared with the exporters
   project.js          localStorage session + .saf.json files
   render.js           the one full-UI repaint
@@ -97,16 +115,20 @@ hoisted function bindings. Keep it that way: put new wiring in `main.js`.
 
 | Key | Action |
 |---|---|
+| `Ctrl Z` | Undo |
+| `Ctrl Shift Z` / `Ctrl Y` | Redo |
 | `Space` | Play / pause |
-| `Esc` | Deselect, close the export sheet |
+| `Esc` | Deselect, close any sheet |
 | `Del` | Delete the active clip |
 | `↑ ↓ ← →` | Nudge selection 1px (`Shift` = 10px) |
 | `P` | Open the paint popover |
+| `I` | Open the icon browser |
 | `Ctrl A` | Select all |
 | `Ctrl E` | Export |
 | `Ctrl S` | Save project file |
 
 Drag on the canvas to move elements (`Shift` locks to an axis); double-click to paint.
+In the icon browser, hold `Shift` while clicking to insert several without closing.
 
 ## Notes
 
@@ -115,3 +137,12 @@ Drag on the canvas to move elements (`Shift` locks to an axis); double-click to 
   `transform`, because GSAP owns that attribute and would wipe the offset mid-tween.
 - Infinitely repeating clips run as tweens beside the master timeline — folding them in
   would make the timeline infinitely long and break the scrubber.
+- Undo is snapshot-based, not command-based: a dozen call sites mutate the live SVG, so
+  recording an inverse for each would be a standing invitation to miss one. Neighbouring
+  snapshots share their markup string by reference, and restoring skips the reparse when
+  only clips changed, which keeps the common case cheap.
+- Bar dragging freezes the time→pixel mapping for the length of the gesture. Rebuilding
+  live would rescale the ruler under the pointer, making it impossible to drag a clip
+  past the current end of the timeline.
+- The only network calls in the app are to `api.iconify.design`, and only while the icon
+  browser is open.

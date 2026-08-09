@@ -36,11 +36,9 @@ export function serialize() {
   };
 }
 
-export function applyProject(p) {
-  if (!p || p.format !== FORMAT) throw new Error('That is not an SVG Animation Factory project file.');
-  if (!p.svg) throw new Error('That project file has no SVG in it.');
-  if (!mountSVG(p.svg, p.fileName || 'project.svg')) throw new Error('The project SVG could not be parsed.');
-
+/* Everything in a project except the markup. Split out because undo can
+   usually skip the reparse — most edits change clips, not the document. */
+export function applyClipState(p) {
   S.clips = Array.isArray(p.clips) ? p.clips : [];
   if (p.trigger) Object.assign(S.trigger, p.trigger);
   S.loop = p.loop !== false;
@@ -48,14 +46,22 @@ export function applyProject(p) {
   S.uid = Math.max(p.uid || 0, maxUid());
   S.gradId = p.gradId || 0;
 
-  (p.hidden || []).forEach(uid => {
-    const rec = S.byUid.get(uid);
-    if (rec) { rec.hidden = true; rec.node.style.display = 'none'; }
+  const hide = new Set(p.hidden || []);
+  S.items.forEach(rec => {
+    rec.hidden = hide.has(rec.uid);
+    rec.node.style.display = rec.hidden ? 'none' : '';
   });
 
   buildTimeline();
   renderAll();
   return S.clips.length;
+}
+
+export function applyProject(p) {
+  if (!p || p.format !== FORMAT) throw new Error('That is not an SVG Animation Factory project file.');
+  if (!p.svg) throw new Error('That project file has no SVG in it.');
+  if (!mountSVG(p.svg, p.fileName || 'project.svg')) throw new Error('The project SVG could not be parsed.');
+  return applyClipState(p);
 }
 
 /* ---------- session autosave ---------- */

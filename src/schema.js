@@ -65,7 +65,10 @@ export function newClip(targets) {
       repeat: 0, yoyo: false, repeatDelay: 0,
     },
     stagger: { amount: 0, from: 'start', axis: '', ease: 'none' },
-    posMode: 'after', posVal: 0,
+    // Lanes are parallel by default: a new clip is its own lane starting at
+    // zero, not queued behind the last one. Drag its bar, or switch "Place at"
+    // to "After previous", to sequence instead.
+    posMode: 'abs', posVal: 0,
     motionPath: '', mpAlign: false, mpRotate: false,
   };
 }

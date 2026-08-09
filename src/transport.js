@@ -1,11 +1,15 @@
 /* =====================================================================
    TRANSPORT + TIMELINE UI
    ===================================================================== */
-import { S, $, esc, round, toast } from './state.js';
+import { S, $, esc, round, clamp, toast, markDirty } from './state.js';
 import { clipDur, rebuild, hasMotion } from './timeline.js';
 import { select } from './selection.js';
 import { renderInspector } from './inspector.js';
 import { renderAll } from './render.js';
+
+/* The seconds the timeline currently spans. Every bar position and every
+   drag calculation is expressed against this one number. */
+function viewTotal() { return Math.max(S.tl ? S.tl.duration() : 1, .001); }
 
 function fmt(s) { return (s < 0 ? 0 : s).toFixed(2); }
 
@@ -25,13 +29,13 @@ export function renderTracks() {
     box.innerHTML = '<div class="empty-note">No clips yet. Select elements and add an animation.</div>';
     $('#ruler').innerHTML = ''; return;
   }
-  const total = Math.max(S.tl ? S.tl.duration() : 1, .001);
+  const total = viewTotal();
   box.innerHTML = S.clips.map(c => {
     const start = c._start || 0, dur = Math.max(clipDur(c) + (c.stagger.amount || 0), .02);
     const L = (start / total) * 100, W = (dur / total) * 100;
     const dL = (start / total) * 100, dW = ((c.timing.delay || 0) / total) * 100;
     const inf = c.timing.repeat < 0 ? ' ∞' : '';
-    return `<div class="track ${S.activeClip === c.id ? 'on' : ''}" data-clip="${c.id}">
+    return `<div class="track ${S.activeClip === c.id ? 'on' : ''} ${c.enabled ? '' : 'off'}" data-clip="${c.id}">
       <div class="tname" title="${esc(c.name)} · ${c.targets.length} target(s)">
         <input type="checkbox" data-cen="${c.id}" ${c.enabled ? 'checked' : ''}>
         <span style="overflow:hidden;text-overflow:ellipsis">${esc(c.name)}</span>
@@ -39,7 +43,9 @@ export function renderTracks() {
       <div class="tlane">
         ${dW > 0.3 ? `<div class="bar delay" style="left:${dL}%;width:${dW}%"></div>` : ''}
         <div class="bar ${S.activeClip === c.id ? 'on' : ''}" data-bar="${c.id}"
-             style="left:${L}%;width:${Math.max(W, 1.2)}%">${esc(c.name)}${inf}</div>
+             title="${esc(c.name)} — drag to move, drag an edge to retime"
+             style="left:${L}%;width:${Math.max(W, 1.2)}%"><i class="grip l" data-grip="l"></i><span
+             class="lbl">${esc(c.name)}${inf}</span><i class="grip r" data-grip="r"></i></div>
       </div></div>`;
   }).join('');
   // ruler
@@ -50,7 +56,96 @@ export function renderTracks() {
   syncScrub();
 }
 
+/* ---------------------------------------------------------------------
+   Dragging a clip bar. The time→pixel mapping is frozen when the drag
+   starts and the timeline is not rebuilt until release: rebuilding live
+   would rescale the ruler under the pointer, so dragging a clip past the
+   current end of the timeline would be impossible.
+   --------------------------------------------------------------------- */
+const MIN_DUR = .05;
+let BAR = null;
+
+function beginBarDrag(e) {
+  const bar = e.target.closest('[data-bar]');
+  if (!bar || e.button !== 0) return;
+  const clip = S.clips.find(c => c.id === bar.dataset.bar);
+  if (!clip) return;
+
+  const lane = bar.parentNode;
+  const laneW = lane.clientWidth;
+  if (!laneW) return;
+
+  const grip = e.target.closest('[data-grip]');
+  BAR = {
+    clip, bar,
+    mode: grip ? grip.dataset.grip : 'move',
+    x0: e.clientX,
+    laneW,
+    total: viewTotal(),
+    start0: clip._start || 0,
+    span0: Math.max(clipDur(clip) + (clip.stagger.amount || 0), .02),
+    moved: false,
+  };
+  // Selection is left to the click handler that fires after this gesture —
+  // re-rendering here would swap out the very node being dragged.
+  try { bar.setPointerCapture(e.pointerId); } catch (err) { /* capture is a nicety */ }
+  e.preventDefault();
+}
+
+function moveBarDrag(e) {
+  if (!BAR) return;
+  const dxPx = e.clientX - BAR.x0;
+  if (!BAR.moved) {
+    if (Math.abs(dxPx) < 3) return;
+    BAR.moved = true;
+    document.body.style.cursor = BAR.mode === 'move' ? 'grabbing' : 'col-resize';
+  }
+  const dt = (dxPx / BAR.laneW) * BAR.total;
+  let start = BAR.start0, span = BAR.span0;
+
+  if (BAR.mode === 'move') start = Math.max(0, BAR.start0 + dt);
+  else if (BAR.mode === 'r') span = Math.max(MIN_DUR, BAR.span0 + dt);
+  else {
+    start = clamp(BAR.start0 + dt, 0, BAR.start0 + BAR.span0 - MIN_DUR);
+    span = BAR.span0 - (start - BAR.start0);
+  }
+
+  BAR.pending = { start, span };
+  BAR.bar.style.left = (start / BAR.total) * 100 + '%';
+  BAR.bar.style.width = Math.max((span / BAR.total) * 100, 1.2) + '%';
+  $('#stat').textContent = BAR.mode === 'move'
+    ? `start ${round(start, 2)}s`
+    : `${round(start, 2)}s → ${round(start + span, 2)}s`;
+}
+
+function endBarDrag() {
+  if (!BAR) return;
+  const { clip, mode, moved, pending } = BAR;
+  BAR = null;
+  document.body.style.cursor = '';
+  if (!moved || !pending) return;   // a plain click — let the click handler select
+
+  clip.posMode = 'abs';
+  clip.posVal = round(Math.max(0, pending.start), 3);
+  if (mode !== 'move') {
+    // The bar spans delay and every repeat, so back the per-cycle duration
+    // out of the span the user actually dragged to.
+    const t = clip.timing;
+    const reps = t.repeat < 0 ? 0 : t.repeat;
+    const overhead = (t.delay || 0) + (t.repeatDelay || 0) * reps + (clip.stagger.amount || 0);
+    t.duration = round(Math.max(MIN_DUR, (pending.span - overhead) / (reps + 1)), 3);
+  }
+  $('#stat').textContent = S.fileName;
+  rebuild(true); renderAll(); markDirty();
+}
+
 export function bindTransport() {
+  const tracks = $('#tracks');
+  tracks.addEventListener('pointerdown', beginBarDrag);
+  tracks.addEventListener('pointermove', moveBarDrag);
+  tracks.addEventListener('pointerup', endBarDrag);
+  tracks.addEventListener('pointercancel', endBarDrag);
+
   const loops = fn => (S.loopTweens || []).forEach(fn);
   $('#tPlay').onclick = () => {
     if (!hasMotion()) { toast('Nothing to play yet.'); return; }

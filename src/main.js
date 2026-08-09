@@ -13,7 +13,9 @@ import { bindPaintShell } from './paint.js';
 import { bindTransport } from './transport.js';
 import { renderAll } from './render.js';
 import { bindTop } from './shell.js';
+import { bindIcons } from './icons.js';
 import { initPersistence, restoreSession } from './project.js';
+import { initHistory, resetHistory } from './history.js';
 import { SAMPLE } from './sample.js';
 
 bindStage();
@@ -22,6 +24,7 @@ bindSwatches();
 bindTransport();
 bindTop();
 bindPaintShell();
+bindIcons();
 initPersistence();
 renderAll();
 
@@ -30,3 +33,8 @@ renderAll();
 gsap.ticker.add(() => { if (S.tl && S.tl.isActive()) renderOverlay(); });
 
 if (!restoreSession()) loadSVG(SAMPLE, 'sample.svg');
+
+// Baseline snapshot last, so the first undo returns to the loaded document
+// rather than to an empty stage.
+initHistory();
+resetHistory();

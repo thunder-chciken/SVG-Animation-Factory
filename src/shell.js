@@ -10,15 +10,30 @@ import { rebuild } from './timeline.js';
 import { renderAll } from './render.js';
 import { openExport, setActiveTab, currentTab } from './export/index.js';
 import { downloadProject, openProjectText, clearSession, flushSession } from './project.js';
+import { undo, redo, canUndo, canRedo, onHistoryChange, resetHistory } from './history.js';
+import { openIcons } from './icons.js';
 import { SAMPLE } from './sample.js';
 
 export function bindTop() {
+  /* ---------- undo / redo ---------- */
+  $('#btnUndo').onclick = undo;
+  $('#btnRedo').onclick = redo;
+  onHistoryChange(() => {
+    $('#btnUndo').disabled = !canUndo();
+    $('#btnRedo').disabled = !canRedo();
+  });
+
   /* ---------- loading SVG ---------- */
+  // Replacing the document starts a new history — undoing across a file
+  // swap would restore clips that point at elements no longer present.
+  const freshLoad = (src, name) => { loadSVG(src, name); resetHistory(); };
+
   $('#btnOpen').onclick = () => $('#file').click();
+  $('#btnIcons').onclick = openIcons;
   $('#file').onchange = e => {
     const f = e.target.files[0]; if (!f) return;
     const r = new FileReader();
-    r.onload = () => loadSVG(r.result, f.name);
+    r.onload = () => freshLoad(r.result, f.name);
     r.readAsText(f);
     e.target.value = '';
   };
@@ -32,36 +47,38 @@ export function bindTop() {
   }));
   drop.addEventListener('drop', e => {
     const f = e.dataTransfer.files[0];
-    if (!f) { const txt = e.dataTransfer.getData('text'); if (txt) loadSVG(txt, 'pasted.svg'); return; }
+    if (!f) { const txt = e.dataTransfer.getData('text'); if (txt) freshLoad(txt, 'pasted.svg'); return; }
     if (/json$/i.test(f.name)) {
-      const r = new FileReader(); r.onload = () => openProjectText(r.result); r.readAsText(f); return;
+      const r = new FileReader();
+      r.onload = () => { if (openProjectText(r.result)) resetHistory(); };
+      r.readAsText(f); return;
     }
     if (!/svg/.test(f.type) && !/\.svg$/i.test(f.name)) { toast('That file is not an SVG.', 'err'); return; }
-    const r = new FileReader(); r.onload = () => loadSVG(r.result, f.name); r.readAsText(f);
+    const r = new FileReader(); r.onload = () => freshLoad(r.result, f.name); r.readAsText(f);
   });
   document.addEventListener('paste', e => {
     if (/INPUT|TEXTAREA/.test(document.activeElement.tagName)) return;
     const txt = e.clipboardData.getData('text');
-    if (txt && txt.includes('<svg')) { loadSVG(txt, 'pasted.svg'); e.preventDefault(); }
+    if (txt && txt.includes('<svg')) { freshLoad(txt, 'pasted.svg'); e.preventDefault(); }
   });
   $('#btnPaste').onclick = async () => {
     try {
       const txt = await navigator.clipboard.readText();
-      if (txt.includes('<svg')) loadSVG(txt, 'pasted.svg');
+      if (txt.includes('<svg')) freshLoad(txt, 'pasted.svg');
       else toast('Clipboard has no SVG markup.', 'err');
     } catch (err) { toast('Press Ctrl+V instead — clipboard access was blocked.', 'err'); }
   };
-  $('#btnSample').onclick = () => loadSVG(SAMPLE, 'sample.svg');
+  $('#btnSample').onclick = () => freshLoad(SAMPLE, 'sample.svg');
   $('#btnReset').onclick = () => {
     if (!S.raw) return;
     if (!confirm('Discard all clips and reload the original file?')) return;
-    loadSVG(S.raw, S.fileName);
+    freshLoad(S.raw, S.fileName);
   };
 
   /* ---------- projects ---------- */
   $('#btnNew').onclick = () => {
     if (S.svg && !confirm('Clear the stage and discard this project?')) return;
-    clearStage(); clearSession();
+    clearStage(); clearSession(); resetHistory();
     toast('Cleared');
   };
   $('#btnSaveProj').onclick = downloadProject;
@@ -69,7 +86,7 @@ export function bindTop() {
   $('#projFile').onchange = e => {
     const f = e.target.files[0]; if (!f) return;
     const r = new FileReader();
-    r.onload = () => openProjectText(r.result);
+    r.onload = () => { if (openProjectText(r.result)) resetHistory(); };
     r.readAsText(f);
     e.target.value = '';
   };
@@ -120,9 +137,23 @@ export function bindTop() {
 
   /* ---------- keyboard ---------- */
   document.addEventListener('keydown', e => {
+    const mod = e.metaKey || e.ctrlKey;
+    const key = e.key.toLowerCase();
+    // Undo works even from a focused field — nothing else in the app claims it.
+    if (mod && key === 'z') {
+      e.preventDefault();
+      e.shiftKey ? redo() : undo();
+      return;
+    }
+    if (mod && key === 'y') { e.preventDefault(); redo(); return; }
+
     if (/INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
     if (e.key === ' ') { e.preventDefault(); $('#tPlay').click(); }
-    if (e.key === 'Escape') { select([]); $('#modal').classList.remove('on'); }
+    if (e.key === 'Escape') {
+      select([]);
+      $('#modal').classList.remove('on');
+      $('#iconModal').classList.remove('on');
+    }
     if ((e.key === 'Delete' || e.key === 'Backspace') && S.activeClip) {
       e.preventDefault();
       S.clips = S.clips.filter(c => c.id !== S.activeClip); S.activeClip = null; rebuild(); renderAll();
@@ -134,8 +165,9 @@ export function bindTop() {
             e.key === 'ArrowUp' ? -d : e.key === 'ArrowDown' ? d : 0);
     }
     if (e.key === 'p' || e.key === 'P') { e.preventDefault(); openPaint(); }
-    if ((e.metaKey || e.ctrlKey) && e.key === 'a') { e.preventDefault(); select(S.items.map(i => i.uid)); }
-    if ((e.metaKey || e.ctrlKey) && e.key === 'e') { e.preventDefault(); openExport(); }
-    if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); flushSession(); downloadProject(); }
+    if (key === 'i' && !mod) { e.preventDefault(); openIcons(); }
+    if (mod && key === 'a') { e.preventDefault(); select(S.items.map(i => i.uid)); }
+    if (mod && key === 'e') { e.preventDefault(); openExport(); }
+    if (mod && key === 's') { e.preventDefault(); flushSession(); downloadProject(); }
   });
 }
