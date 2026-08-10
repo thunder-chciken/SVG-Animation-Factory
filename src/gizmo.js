@@ -36,32 +36,47 @@ export function setGizmoRedraw(fn) { redraw = fn; }
    --------------------------------------------------------------------- */
 const screenPt = (m, x, y) => ({ x: m.a * x + m.c * y + m.e, y: m.b * x + m.d * y + m.f });
 
+/* The element's four corners in screen space, measured from its *static*
+   geometry.
+
+   The child's getBBox() is pre-transform, and the wrapper's screen matrix
+   stops short of the child's transform — which is where GSAP writes the
+   animation. Taken together they describe where the artwork sits at rest,
+   so the box holds still instead of pulsing along with a playing timeline.
+   Measuring the wrapper's box, or the element's client rect, folds the
+   animation straight back in. */
+export function staticQuad(node) {
+  const g = wrapFor(node);
+  let b, m;
+  try { b = node.getBBox(); m = g.getScreenCTM(); } catch (e) { return null; }
+  if (!m || (!b.width && !b.height)) return null;
+  return [[b.x, b.y], [b.x + b.width, b.y], [b.x + b.width, b.y + b.height], [b.x, b.y + b.height]]
+    .map(([x, y]) => screenPt(m, x, y));
+}
+
 /* Screen-space corners of the gizmo, clockwise from top-left. */
 function corners(wrapRect) {
   const recs = topSel();
   if (!recs.length) return null;
+  const off = p => ({ x: p.x - wrapRect.x, y: p.y - wrapRect.y });
 
   if (recs.length === 1) {
-    const g = wrapFor(recs[0].node);
-    let b, m;
-    try { b = g.getBBox(); m = g.getScreenCTM(); } catch (e) { return null; }
-    if (!m || (!b.width && !b.height)) return null;
-    const pts = [[b.x, b.y], [b.x + b.width, b.y], [b.x + b.width, b.y + b.height], [b.x, b.y + b.height]]
-      .map(([x, y]) => screenPt(m, x, y));
-    return pts.map(p => ({ x: p.x - wrapRect.x, y: p.y - wrapRect.y }));
+    const q = staticQuad(recs[0].node);
+    return q ? q.map(off) : null;
   }
 
-  // several elements — axis-aligned union of their screen rects
+  // several elements — axis-aligned union, still from static geometry
   let l = Infinity, t = Infinity, r = -Infinity, bt = -Infinity;
   recs.forEach(rec => {
-    let q; try { q = rec.node.getBoundingClientRect(); } catch (e) { return; }
-    if (!q.width && !q.height) return;
-    l = Math.min(l, q.left); t = Math.min(t, q.top);
-    r = Math.max(r, q.right); bt = Math.max(bt, q.bottom);
+    const q = staticQuad(rec.node);
+    if (!q) return;
+    q.forEach(p => {
+      l = Math.min(l, p.x); t = Math.min(t, p.y);
+      r = Math.max(r, p.x); bt = Math.max(bt, p.y);
+    });
   });
   if (!isFinite(l) || r <= l) return null;
-  return [{ x: l, y: t }, { x: r, y: t }, { x: r, y: bt }, { x: l, y: bt }]
-    .map(p => ({ x: p.x - wrapRect.x, y: p.y - wrapRect.y }));
+  return [{ x: l, y: t }, { x: r, y: t }, { x: r, y: bt }, { x: l, y: bt }].map(off);
 }
 
 /* ---------------------------------------------------------------------

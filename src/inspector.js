@@ -5,7 +5,7 @@ import { S, $, esc, round, clamp, toast, markDirty } from './state.js';
 import { OPEN_SECT, sect, ctlRow, propRow, syncOpenToWorkspace } from './ui.js';
 import { WS, moveSection, resetWorkspace } from './workspace.js';
 import { readXf, patchXf, resetXf, IDENTITY } from './transform.js';
-import { alignNodes, distributeNodes } from './align.js';
+import { alignNodes, distributeNodes, fitToArtboard } from './align.js';
 import { resizeArtboard, niceGridSize } from './ingest.js';
 import { renderOverlay } from './selection.js';
 import { syncLoopUI } from './transport.js';
@@ -144,6 +144,12 @@ function alignSection() {
       ${btn('top', '┳', 'Align top')}
       ${btn('vcenter', '═', 'Align vertical centres')}
       ${btn('bottom', '┻', 'Align bottom')}
+    </div>
+    <div class="row" style="margin:6px 0 0">
+      <button class="btn xs pri" id="fitPage" style="flex:1"
+        title="Scale all artwork uniformly so it touches the artboard">Fit art to page</button>
+      <input type="number" id="fitMargin" min="0" max="45" step="1" value="0"
+        style="width:52px" title="margin %">
     </div>
     <div class="row" style="margin:6px 0 0">
       <button class="btn xs" data-align="center" style="flex:1" ${dis}>Centre both</button>
@@ -548,6 +554,13 @@ function bindInspector() {
     const vb = (S.svg?.getAttribute('viewBox') || '0 0 100 100').trim().split(/[\s,]+/).map(Number);
     setGrid(niceGridSize(vb[2], vb[3]));
   };
+  const fitBtn = $('#fitPage'); if (fitBtn) fitBtn.onclick = () => {
+    const r = fitToArtboard(parseFloat($('#fitMargin').value) || 0);
+    if (!r) { toast('Nothing on the page to fit.', 'err'); return; }
+    renderOverlay(); rebuild(true); renderAll(); markDirty();
+    toast(`Fitted ${r.count} item${r.count > 1 ? 's' : ''} · ${Math.round(r.scale * 100)}%`, 'ok');
+  };
+
   const gC = $('#gridColor'); if (gC) gC.oninput = e => {
     S.grid.color = e.target.value; renderOverlay(); markDirty();
   };

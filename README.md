@@ -77,6 +77,10 @@ opacity/colour/letter-spacing, CSS filters, line drawing), **78 one-click preset
 filtered by category, per-clip stagger, motion paths, and a scrubable timeline. Text
 presets carry their own stagger, so they spread across split letters on click.
 
+**Fit art to page** — one click scales everything uniformly until the artwork touches
+the artboard, centred, with an optional margin. One factor for both axes and one shared
+pivot, so nothing is stretched and nothing moves relative to anything else.
+
 **Align** — left / centre / right, top / middle / bottom, centre-both, and even
 distribution, relative to the selection or to the artboard. Plus a snapping grid in
 SVG user units, so it holds at any zoom, with a colourable on-canvas overlay. The grid
@@ -322,6 +326,11 @@ In the icon browser, hold `Shift` while clicking to insert several without closi
   zoom without special-casing.
 - Typed text becomes one `<text>` per line, not tspans. Tspans cannot be positioned or
   animated independently, and the letter splitter walks real `<text>` nodes.
+- Everything that measures artwork for editing — the gizmo box, the transform pivot,
+  align, distribute, snapping and fit — reads the element's own `getBBox()` through its
+  wrapper's matrix, never the element's client rect or the wrapper's box. Both of those
+  fold in the element's own `transform`, which is the attribute GSAP animates, so the
+  measurements pulsed frame by frame whenever a timeline was playing.
 - Static transforms are stored as a model in a data attribute rather than parsed back
   out of the transform string. Round-tripping a matrix loses which of the infinitely
   many rotate/skew/scale combinations produced it, so the sliders would drift.

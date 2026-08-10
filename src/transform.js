@@ -45,13 +45,15 @@ export function readXf(node) {
 
 /* Pivot for rotate / scale / skew, in the wrapper's own coordinate space.
 
-   getBBox() on the wrapper reports its contents after the child's own
-   transform but before the wrapper's, which is exactly the space the
-   transform list operates in — so the pivot stays put no matter what is
-   already applied. */
+   Measured on the child, not on the wrapper. getBBox() on a <g> folds in its
+   children's own transforms — and the child's transform is precisely where
+   GSAP writes the animation. Taking the wrapper's box made the pivot drift
+   frame by frame while the timeline played. The child's own getBBox() is
+   pre-transform geometry, so it holds still whatever is animating. */
 function pivot(g) {
+  const src = g.firstElementChild || g;
   try {
-    const b = g.getBBox();
+    const b = src.getBBox();
     if (!b.width && !b.height) return { cx: 0, cy: 0 };
     return { cx: b.x + b.width / 2, cy: b.y + b.height / 2 };
   } catch (e) {

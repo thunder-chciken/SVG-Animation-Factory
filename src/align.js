@@ -10,12 +10,17 @@
 import { S, round } from './state.js';
 import { readXf, patchXf, wrapFor } from './transform.js';
 
-/* Node bounds expressed in the root's user units. */
+/* Node bounds in the root's user units, measured at rest.
+
+   The matrix comes from the element's wrapper rather than the element, which
+   stops short of the element's own transform — the attribute GSAP animates.
+   Measuring through the element itself means aligning or snapping while the
+   timeline is playing works off whatever frame happened to be on screen. */
 export function rootBBox(node) {
   let b, m;
   try {
     b = node.getBBox();
-    m = S.svg.getScreenCTM().inverse().multiply(node.getScreenCTM());
+    m = S.svg.getScreenCTM().inverse().multiply(wrapFor(node).getScreenCTM());
   } catch (e) { return null; }
   if (!b || (!b.width && !b.height)) return null;
 
@@ -124,6 +129,57 @@ export function distributeNodes(recs, axis) {
     moveByRoot(it.rec.node, horiz ? d : 0, horiz ? 0 : d);
   });
   return items.length;
+}
+
+/* ---------------------------------------------------------------------
+   Fit to artboard
+
+   Scale everything as one piece so the artwork just touches the page. One
+   factor for both axes and one shared pivot, so nothing is stretched and
+   nothing shifts relative to anything else.
+   --------------------------------------------------------------------- */
+export function fitToArtboard(marginPct = 0) {
+  if (!S.svg) return null;
+
+  // top-level elements only — scaling a group already carries its children
+  const tops = S.items.filter(i => !i.parentUid);
+  const items = tops
+    .map(r => ({ rec: r, box: rootBBox(r.node) }))
+    .filter(i => i.box);
+  if (!items.length) return null;
+
+  const art = unionBox(items.map(i => i.box));
+  const page = artboardBox();
+  if (!art.w || !art.h) return null;
+
+  const m = Math.max(0, Math.min(45, marginPct)) / 100;
+  const availW = page.w * (1 - m * 2);
+  const availH = page.h * (1 - m * 2);
+  // the smaller ratio is the one that makes it fit on both axes
+  const k = Math.min(availW / art.w, availH / art.h);
+  if (!isFinite(k) || k <= 0) return null;
+
+  const artC = { x: art.x + art.w / 2, y: art.y + art.h / 2 };
+  const pageC = { x: page.x + page.w / 2, y: page.y + page.h / 2 };
+
+  items.forEach(({ rec, box }) => {
+    const c = { x: box.x + box.w / 2, y: box.y + box.h / 2 };
+    // scale about the artwork's centre, then move that centre onto the page's
+    const want = {
+      x: pageC.x + (c.x - artC.x) * k,
+      y: pageC.y + (c.y - artC.y) * k,
+    };
+    const t = readXf(rec.node);
+    const d = toLocalDelta(rec.node, want.x - c.x, want.y - c.y);
+    patchXf(rec.node, {
+      sx: round(t.sx * k, 5),
+      sy: round(t.sy * k, 5),
+      x: round(t.x + d.dx, 3),
+      y: round(t.y + d.dy, 3),
+    });
+  });
+
+  return { count: items.length, scale: k };
 }
 
 /* ---------------------------------------------------------------------
