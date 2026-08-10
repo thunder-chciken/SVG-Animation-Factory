@@ -9,15 +9,19 @@
    another origin.
    ===================================================================== */
 import { S, $, toast } from './state.js';
+import { exportViewBox, vbString } from './bounds.js';
 
 function liveClone(scale) {
   const clone = S.svg.cloneNode(true);
   clone.removeAttribute('style');
   clone.querySelectorAll('[data-saf]').forEach(n => n.removeAttribute('data-saf'));
 
-  const vb = (clone.getAttribute('viewBox') || '0 0 300 150').trim().split(/[\s,]+/).map(Number);
-  const w = Math.max(1, Math.round(vb[2] * scale));
-  const h = Math.max(1, Math.round(vb[3] * scale));
+  // Same framing rule as the code exports, so a PNG and an animated SVG of
+  // the same project crop identically.
+  const frame = exportViewBox();
+  clone.setAttribute('viewBox', vbString(frame));
+  const w = Math.max(1, Math.round(frame.w * scale));
+  const h = Math.max(1, Math.round(frame.h * scale));
   clone.setAttribute('width', w);
   clone.setAttribute('height', h);
   if (!clone.getAttribute('xmlns')) clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');

@@ -1,13 +1,14 @@
 /* =====================================================================
    CODE EXPORT — the tabbed sheet and its syntax highlighting
    ===================================================================== */
-import { S, $, esc, toast } from '../state.js';
+import { S, $, esc, round, toast } from '../state.js';
 import { rebuild } from '../timeline.js';
 import { genGSAP } from './gsap-export.js';
 import { genHTML } from './html.js';
 import { genWP } from './wp.js';
 import { genCSS } from './css.js';
 import { svgSource } from './svg.js';
+import { animatedBounds } from '../bounds.js';
 import { genSMIL, smilGaps } from './smil.js';
 import { DOCS } from './docs.js';
 
@@ -62,7 +63,33 @@ export function openExport() {
   $('#expCode').dataset.raw = code;
   $('#expNote').textContent = `${S.clips.filter(c => c.enabled).length} clip(s) · ${code.split('\n').length} lines`;
   renderDoc(activeTab);
+  renderTrimInfo();
   $('#modal').classList.add('on');
+}
+
+/* Show what the trim actually did, so the framing is never a mystery. */
+function renderTrimInfo() {
+  const o = S.exportOpts;
+  $('#trimOn').checked = o.trim;
+  $('#trimPad').value = o.pad;
+  $('#trimPad').disabled = !o.trim;
+  const doc = (S.svg?.getAttribute('viewBox') || '').trim().split(/[\s,]+/).map(Number);
+  if (!o.trim) {
+    $('#trimInfo').textContent = doc.length === 4 ? `artboard ${round(doc[2], 1)} × ${round(doc[3], 1)}` : '';
+    return;
+  }
+  const b = animatedBounds({ pad: o.pad || 0 });
+  $('#trimInfo').textContent = b
+    ? `cropped to ${round(b.w, 1)} × ${round(b.h, 1)} — covers every frame of the animation`
+    : 'nothing to trim to';
+}
+
+export function bindExportOptions() {
+  $('#trimOn').onchange = e => { S.exportOpts.trim = e.target.checked; openExport(); };
+  $('#trimPad').oninput = e => {
+    S.exportOpts.pad = Math.max(0, parseInt(e.target.value, 10) || 0);
+    openExport();
+  };
 }
 
 export function setActiveTab(id) { activeTab = id; }

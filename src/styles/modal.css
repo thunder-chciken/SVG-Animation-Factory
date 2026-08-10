@@ -15,6 +15,12 @@
 .sheet .code{flex:1;overflow:auto;margin:0 14px 14px;background:var(--bg);border:1px solid var(--line2);
   border-radius:6px;min-height:180px}
 
+#expTrim{display:flex;align-items:center;gap:10px;margin:8px 14px 0;padding:7px 11px;
+  background:var(--panel2);border:1px solid var(--line2);border-radius:6px}
+#expTrim b{color:var(--text);font-weight:600}
+#expTrim .hint{font-size:10.5px}
+#trimInfo{color:var(--amber)}
+
 /* ---------- export documentation ---------- */
 #expDoc{margin:0 14px 10px;padding:10px 12px;background:var(--bg);
   border:1px solid var(--line2);border-radius:0 6px 6px 6px;max-height:34vh;overflow:auto}

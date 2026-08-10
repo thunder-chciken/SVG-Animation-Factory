@@ -1,5 +1,6 @@
 import { S, clamp } from '../state.js';
 import { resetStage, buildTimeline } from '../timeline.js';
+import { exportViewBox, vbString } from '../bounds.js';
 
 /* The stage SVG, cleaned of studio bookkeeping and given the #saf-root
    handle that every generated script hangs off.
@@ -15,9 +16,15 @@ export function svgSource() {
 
   const at = S.tl ? S.tl.progress() : 0;
   const wasPlaying = S.tl ? S.tl.isActive() : false;
+
+  // Measured before the stage is reset, because the trim has to see every
+  // frame of the animation, not just the pose it happens to be resting in.
+  const frame = exportViewBox();
+
   resetStage();
 
   const c = S.svg.cloneNode(true);
+  c.setAttribute('viewBox', vbString(frame));
   c.querySelectorAll('[data-svg-origin]').forEach(n => n.removeAttribute('data-svg-origin'));
   // The static-transform model is studio bookkeeping; the composed transform
   // attribute it produces is the part that matters in an export.

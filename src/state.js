@@ -34,6 +34,10 @@ export const S = {
   // own coordinates never change and exports stay exactly as authored.
   viewport: { zoom: 1, x: 0, y: 0 },
 
+  // How exports frame the artwork. Trimming crops the viewBox to what the
+  // animation actually occupies, so nothing gets clipped off the edge.
+  exportOpts: { trim: true, pad: 0 },
+
   // Grid snapping, in SVG user units.
   grid: { on: false, show: false, size: 10 },
 

@@ -167,6 +167,14 @@
     <button class="btn sm gho" id="btnCloseModal">Close</button>
   </header>
   <div class="tabs" id="expTabs"></div>
+  <div id="expTrim">
+    <label class="hint" style="display:flex;gap:6px;align-items:center">
+      <input type="checkbox" id="trimOn" checked> <b>Trim to artwork</b></label>
+    <span class="hint" id="trimInfo"></span>
+    <span class="spacer"></span>
+    <label class="hint" style="display:flex;gap:6px;align-items:center">padding
+      <input type="number" id="trimPad" min="0" max="500" step="1" value="0" style="width:62px"></label>
+  </div>
   <div id="expDoc"></div>
   <div class="code"><pre id="expCode"></pre></div>
 </div></div>

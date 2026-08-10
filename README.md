@@ -108,6 +108,13 @@ icon inserts. Steps are coalesced per gesture, so dragging a slider is one undo,
 | CSS keyframes | Transform, opacity and filter clips (no draw-on or motion paths) |
 | Indexed SVG | The cleaned markup with the ids the generated code targets |
 
+**Trim to artwork** (on by default) crops the exported viewBox to what the animation
+actually occupies — across the whole timeline, not just the resting pose. The stage
+draws with `overflow: visible` so anything outside the artboard still shows while you
+work; the export viewBox is a real crop, so without trimming that overflow is silently
+cut off. Optional padding, and the same framing is used by PNG and JPEG so a still and
+an animated SVG of the same project crop identically.
+
 Each tab carries its own panel explaining what the format is, what it can and can't
 do, and how to put it on a page. The Animated SVG tab additionally reports what your
 particular timeline loses in the conversion, rather than dropping it silently.
@@ -221,6 +228,7 @@ src/
   text.js             text creation and editing
   menu.js             File menu, recent projects, save handles
   raster.js           PNG and JPEG export
+  bounds.js           artwork bounds across the whole animation
   icons.js            Iconify search and insertion
   wheel.js            HSV colour wheel
   filters.js          CSS filter functions shared with the exporters

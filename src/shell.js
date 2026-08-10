@@ -8,7 +8,7 @@ import { splitText, splitCompoundPath } from './separate.js';
 import { openPaint } from './paint.js';
 import { rebuild } from './timeline.js';
 import { renderAll } from './render.js';
-import { openExport, setActiveTab, currentTab } from './export/index.js';
+import { openExport, setActiveTab, currentTab, bindExportOptions } from './export/index.js';
 import { openProjectText, flushSession } from './project.js';
 import { saveProject } from './menu.js';
 import { undo, redo, canUndo, canRedo, onHistoryChange, resetHistory } from './history.js';
@@ -84,6 +84,7 @@ export function bindTop() {
 
   /* ---------- export sheet ---------- */
   $('#btnExport').onclick = openExport;
+  bindExportOptions();
   $('#btnCloseModal').onclick = () => $('#modal').classList.remove('on');
   $('#modal').onclick = e => { if (e.target.id === 'modal') $('#modal').classList.remove('on'); };
   $('#expTabs').addEventListener('click', e => {
