@@ -10,6 +10,7 @@ import { reindex } from './ingest.js';
 import { rebuild } from './timeline.js';
 import { renderAll } from './render.js';
 import { rootBBox, snapDelta } from './align.js';
+import { renderGizmo, setGizmoRedraw, gizmoBusy } from './gizmo.js';
 
 export function recFromNode(n) {
   while (n && n !== S.svg) {
@@ -76,7 +77,10 @@ export function renderOverlay() {
   if (S.hot && !S.sel.has(S.hot)) draw(S.byUid.get(S.hot), 'hot');
   const picked = selectedRecs();
   if (picked.length <= 150) picked.forEach(r => draw(r, ''));
+  // Scale / rotate handles sit on top of the outlines.
+  if (picked.length) renderGizmo(ov, wrapRect);
 }
+
 
 /* Position is one field of the static transform model — see transform.js
    for why it lives on a wrapper rather than the element itself. */
@@ -315,9 +319,12 @@ function applyDrag(clientX, clientY, shift) {
 
 export function bindStage() {
   const stage = $('#stage');
+  // The gizmo redraws through us rather than importing back — modules stay
+  // side-effect free on import, which is what keeps the cycles here safe.
+  setGizmoRedraw(renderOverlay);
 
   stage.addEventListener('pointerdown', e => {
-    if (e.button !== 0) return;
+    if (e.button !== 0 || gizmoBusy()) return;
     const target = pickAt(e);
     if (!target) {
       if (!e.shiftKey) select([]);

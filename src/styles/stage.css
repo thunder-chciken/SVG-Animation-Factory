@@ -17,6 +17,22 @@
 #overlay path#gridLines{fill:none;stroke:rgba(255,255,255,.13);stroke-width:1;
   vector-effect:non-scaling-stroke;shape-rendering:crispEdges}
 @keyframes ants{to{stroke-dashoffset:-6}}
+
+/* ---------- transform gizmo ---------- */
+#gizmo .giz-box{fill:none;stroke:var(--sel);stroke-width:1.25;vector-effect:non-scaling-stroke;
+  stroke-dasharray:none}
+#gizmo .giz-arm{stroke:var(--sel);stroke-width:1.25;vector-effect:non-scaling-stroke}
+#gizmo .giz-handle{
+  fill:#fff;stroke:var(--sel);stroke-width:1.5;vector-effect:non-scaling-stroke;
+  pointer-events:auto;cursor:nwse-resize;
+}
+#gizmo .giz-handle:hover{fill:var(--amber);stroke:var(--amber)}
+#gizmo .giz-rot{
+  fill:#fff;stroke:var(--sel);stroke-width:1.5;vector-effect:non-scaling-stroke;
+  pointer-events:auto;cursor:grab;
+}
+#gizmo .giz-rot:hover{fill:var(--amber);stroke:var(--amber)}
+#gizmo .giz-rot:active{cursor:grabbing}
 #empty{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
   flex-direction:column;gap:10px;color:var(--dimmer);text-align:center;pointer-events:none}
 #empty .big{font-size:38px;opacity:.25}

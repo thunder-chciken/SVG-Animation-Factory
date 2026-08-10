@@ -28,7 +28,7 @@ export function rootBBox(node) {
 
 /* A root-space delta, restated in the coordinate space the element's
    wrapper actually lives in. Only the linear part matters for a delta. */
-function toLocalDelta(node, dx, dy) {
+export function toLocalDelta(node, dx, dy) {
   const parent = wrapFor(node).parentNode;
   if (!parent || parent === S.svg) return { dx, dy };
   try {

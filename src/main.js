@@ -16,6 +16,7 @@ import { bindIcons } from './icons.js';
 import { bindMenu } from './menu.js';
 import { bindTextShell } from './text.js';
 import { bindViewport } from './viewport.js';
+import { bindGizmo, onGizmoCommit } from './gizmo.js';
 import { initPersistence, restoreSession } from './project.js';
 import { initHistory, resetHistory } from './history.js';
 import { loadWorkspace } from './workspace.js';
@@ -35,6 +36,8 @@ bindIcons();
 bindMenu();
 bindTextShell();
 bindViewport();
+bindGizmo();
+onGizmoCommit(() => renderAll());
 initPersistence();
 renderAll();
 

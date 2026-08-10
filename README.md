@@ -19,6 +19,14 @@ canvas to rubber-band a group. Whatever is selected is what a preset applies to,
 preset always starts a new lane for the current selection. Drag a shape to move it;
 **hold Shift mid-drag** to lock it to a straight rail (see below).
 
+**Transform gizmo** — select anything and a box appears around it with four corner
+handles and a rotate knob. Corners scale **uniformly** — one factor drives both axes, so
+the artwork can never be pinched or squeezed — and the opposite corner stays nailed down
+the way Photoshop does it. The rotate knob turns about the selection centre; hold
+`Shift` to snap to 15°. A single selection gets a box that rotates with the element; a
+multi-selection gets the axis-aligned union and scales as a group. Scale X and Y stay
+separately editable in the Transform panel for the rare time you want them apart.
+
 **Transform** — move, scale, rotate and skew the artwork itself, with **no animation on
 it at all**. Written to a dedicated wrapper so GSAP never overwrites it and any transform
 already in the source file keeps working. Clips animate on top of whatever you set here.
@@ -225,6 +233,7 @@ src/
   transform.js        static move / scale / rotate / skew
   viewport.js         canvas zoom and pan
   align.js            align, distribute, grid snapping
+  gizmo.js            selection box, scale and rotate handles
   text.js             text creation and editing
   menu.js             File menu, recent projects, save handles
   raster.js           PNG and JPEG export
