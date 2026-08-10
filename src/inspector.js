@@ -6,6 +6,7 @@ import { OPEN_SECT, sect, ctlRow, propRow, syncOpenToWorkspace } from './ui.js';
 import { WS, moveSection, resetWorkspace } from './workspace.js';
 import { readXf, patchXf, resetXf, IDENTITY } from './transform.js';
 import { alignNodes, distributeNodes } from './align.js';
+import { resizeArtboard, niceGridSize } from './ingest.js';
 import { renderOverlay } from './selection.js';
 import { syncLoopUI } from './transport.js';
 import { SCHEMA, EASES, EASE_DIR, newClip } from './schema.js';
@@ -83,6 +84,42 @@ function transformSection() {
       animation on the element. Animation clips build on top of whatever you set here.</p>`);
 }
 
+/* The page itself: how big it is, and what sits behind the artwork. */
+function docSection() {
+  const vb = (S.svg?.getAttribute('viewBox') || '0 0 0 0').trim().split(/[\s,]+/).map(Number);
+  const vw = Math.round(vb[2] || 0), vh = Math.round(vb[3] || 0);
+  const a = S.artboard;
+  const preset = (w, h) => `<button class="btn xs" data-docsize="${w}x${h}">${w}×${h}</button>`;
+  return sect('doc', 'Document', `
+    <div class="ctl"><label>Size</label>
+      <input type="text" id="docSize" value="${vw} x ${vh}" placeholder="1920x1080"
+        title="Type any size, e.g. 1920x1080">
+      <button class="btn xs" id="docApply">Set</button></div>
+    <div class="row" style="margin:2px 0 9px">
+      ${preset(1920, 1080)}${preset(1080, 1080)}${preset(1080, 1920)}${preset(1200, 630)}${preset(512, 512)}
+    </div>
+    <div class="ctl wide"><label>Show page</label>
+      <label class="hint" style="display:flex;gap:6px;align-items:center">
+        <input type="checkbox" id="abShow" ${a.show ? 'checked' : ''}> draw the artboard behind the artwork</label></div>
+    <div class="ctl"><label>Page colour</label>
+      <input type="color" id="abBg" value="${a.bg}">
+      <input type="text" id="abBgHex" value="${a.bg}"></div>
+    <p class="hint" style="margin-top:6px">The page is editor-only — it never reaches an export.
+      Resizing changes the artboard without moving any artwork.</p>`);
+}
+
+/* How big a grid square actually is on screen. This is the number that
+   explains why a step suited to a small logo looks like nothing on a
+   1920px artboard. */
+function gridStepNote() {
+  if (!S.svg) return '';
+  try {
+    const m = S.svg.getScreenCTM();
+    if (!m) return '';
+    return `One square is ${round(S.grid.size * Math.hypot(m.a, m.b), 1)}px on screen right now.`;
+  } catch (e) { return ''; }
+}
+
 /* Align, distribute and grid snapping. */
 let alignTo = 'selection';
 
@@ -121,10 +158,14 @@ function alignSection() {
       <label class="hint" style="display:flex;gap:6px;align-items:center">
         <input type="checkbox" id="gridShow" ${g.show ? 'checked' : ''}> draw it on the canvas</label></div>
     <div class="ctl"><label>Grid size</label>
-      <input type="range" id="gridSizeR" min="1" max="100" step="1" value="${g.size}">
-      <input type="number" id="gridSizeN" min="1" step="1" value="${g.size}" title="user units"></div>
+      <input type="number" id="gridSizeN" min="1" step="1" value="${g.size}" title="user units">
+      <button class="btn xs" id="gridAuto" title="Pick a step that suits this artboard">Auto</button></div>
+    <div class="ctl"><label>Grid colour</label>
+      <input type="color" id="gridColor" value="${g.color}">
+      <input type="number" id="gridOpacity" min="0.05" max="1" step="0.05" value="${g.opacity}" title="opacity"></div>
     <p class="hint" style="margin-top:6px">Grid units are SVG user units, not screen pixels, so
-      snapping stays put at any zoom. With snapping on, the arrow keys step one grid square.</p>`);
+      snapping holds at any zoom. <b>${gridStepNote()}</b> With snapping on, the arrow keys step
+      one grid square.</p>`);
 }
 
 export function renderInspector() {
@@ -165,13 +206,14 @@ export function renderInspector() {
   parts.loop = loopSection();
   parts.xform = transformSection();
   parts.align = alignSection();
+  parts.doc = docSection();
 
   const emit = ids => ids.map(id => parts[id] || '').join('');
 
   if (!clip) {
     html += `<div class="empty-note">No clip selected.<br>Select elements and press
       <b>+ Animate selection</b>, or pick a preset below.</div>`;
-    html += emit(WS.order.filter(id => ['xform', 'align', 'presets', 'loop'].includes(id)));
+    html += emit(WS.order.filter(id => ['doc', 'xform', 'align', 'presets', 'loop'].includes(id)));
     box.innerHTML = html; bindInspector(); return;
   }
 
@@ -433,6 +475,45 @@ function bindInspector() {
     toast('Transform reset', 'ok');
   };
 
+  /* document — artboard size and page colour */
+  const applySize = (w, h) => {
+    if (!isFinite(w) || !isFinite(h) || w < 1 || h < 1) {
+      toast('Enter a size like 1920x1080.', 'err'); return;
+    }
+    if (resizeArtboard(Math.round(w), Math.round(h))) {
+      renderAll();
+      toast(`Artboard ${Math.round(w)} × ${Math.round(h)}`, 'ok');
+    }
+  };
+  const dApply = $('#docApply');
+  const readSize = () => {
+    // accept 1920x1080, 1920 × 1080, "1920, 1080", or plain spaces
+    const m = /(-?[\d.]+)\s*[x×,\s]\s*(-?[\d.]+)/i.exec($('#docSize').value || '');
+    if (!m) { toast('Enter a size like 1920x1080.', 'err'); return; }
+    applySize(parseFloat(m[1]), parseFloat(m[2]));
+  };
+  if (dApply) dApply.onclick = readSize;
+  const dSize = $('#docSize');
+  if (dSize) dSize.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); readSize(); } };
+  box.querySelectorAll('[data-docsize]').forEach(b => b.onclick = () => {
+    const [w, h] = b.dataset.docsize.split('x').map(Number);
+    applySize(w, h);
+  });
+  const abS = $('#abShow'); if (abS) abS.onchange = e => {
+    S.artboard.show = e.target.checked; renderOverlay(); markDirty(); renderInspector();
+  };
+  const setBg = v => {
+    S.artboard.bg = v;
+    const c = $('#abBg'), h = $('#abBgHex');
+    if (c) c.value = v; if (h) h.value = v;
+    renderOverlay(); markDirty();
+  };
+  const abB = $('#abBg'); if (abB) abB.oninput = e => setBg(e.target.value);
+  const abH = $('#abBgHex'); if (abH) abH.oninput = e => {
+    const v = e.target.value.trim();
+    if (/^#([\da-f]{3}|[\da-f]{6})$/i.test(v)) setBg(v);
+  };
+
   /* align + grid — global, binds whether or not a clip is active */
   box.querySelectorAll('[data-alignto]').forEach(el => el.onclick = () => {
     alignTo = el.dataset.alignto; renderInspector();
@@ -459,13 +540,21 @@ function bindInspector() {
     S.grid.show = e.target.checked; renderOverlay(); markDirty(); renderInspector();
   };
   const setGrid = v => {
-    S.grid.size = clamp(parseFloat(v) || 1, 0.5, 500);
-    $('#gridSizeR').value = Math.min(S.grid.size, 100);
-    $('#gridSizeN').value = S.grid.size;
+    S.grid.size = clamp(parseFloat(v) || 1, 0.5, 5000);
+    renderOverlay(); markDirty(); renderInspector();
+  };
+  const gN = $('#gridSizeN'); if (gN) gN.onchange = e => setGrid(e.target.value);
+  const gAuto = $('#gridAuto'); if (gAuto) gAuto.onclick = () => {
+    const vb = (S.svg?.getAttribute('viewBox') || '0 0 100 100').trim().split(/[\s,]+/).map(Number);
+    setGrid(niceGridSize(vb[2], vb[3]));
+  };
+  const gC = $('#gridColor'); if (gC) gC.oninput = e => {
+    S.grid.color = e.target.value; renderOverlay(); markDirty();
+  };
+  const gO = $('#gridOpacity'); if (gO) gO.oninput = e => {
+    S.grid.opacity = clamp(parseFloat(e.target.value) || .05, .05, 1);
     renderOverlay(); markDirty();
   };
-  const gR = $('#gridSizeR'); if (gR) gR.oninput = e => setGrid(e.target.value);
-  const gN = $('#gridSizeN'); if (gN) gN.oninput = e => setGrid(e.target.value);
 
   /* loop settings — global, so they bind whether or not a clip is active */
   const lc = S.loopCfg;

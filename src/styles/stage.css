@@ -8,13 +8,16 @@
     #16181d;
   background-size:22px 22px;background-position:0 0,11px 11px;}
 #stagewrap.plain{background:var(--stagebg,#16181d)}
-#stage{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;padding:36px}
+#artboard{position:absolute;pointer-events:none;z-index:0;display:none;
+  box-shadow:0 0 0 1px rgba(255,255,255,.22), 0 10px 34px rgba(0,0,0,.5)}
+#stage{position:absolute;inset:0;z-index:1;display:flex;align-items:center;justify-content:center;padding:36px}
 #stage svg{max-width:100%;max-height:100%;overflow:visible;display:block}
 #overlay{position:absolute;inset:0;pointer-events:none;z-index:5}
 #overlay rect{fill:none;stroke:var(--sel);stroke-width:1;vector-effect:non-scaling-stroke}
 #overlay rect.hot{stroke:var(--amber);stroke-dasharray:3 3;animation:ants .6s linear infinite}
 #overlay rect#marquee{fill:rgba(77,163,255,.12);stroke:var(--sel);stroke-dasharray:4 3}
-#overlay path#gridLines{fill:none;stroke:rgba(255,255,255,.13);stroke-width:1;
+/* colour and opacity come from the Grid panel, set inline */
+#overlay path#gridLines{fill:none;stroke-width:1;
   vector-effect:non-scaling-stroke;shape-rendering:crispEdges}
 @keyframes ants{to{stroke-dashoffset:-6}}
 

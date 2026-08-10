@@ -38,8 +38,14 @@ export const S = {
   // animation actually occupies, so nothing gets clipped off the edge.
   exportOpts: { trim: true, pad: 0 },
 
-  // Grid snapping, in SVG user units.
-  grid: { on: false, show: false, size: 10 },
+  // Grid snapping, in SVG user units. The size is re-derived whenever a
+  // document is opened — a step that suits a 420px logo is invisible on a
+  // 1920px artboard, which made the grid look broken.
+  grid: { on: false, show: false, size: 10, color: '#6d7d99', opacity: .55 },
+
+  // The page itself. Drawn behind the artwork so the document's edges are
+  // always visible, instead of artwork floating on an endless checkerboard.
+  artboard: { show: true, bg: '#ffffff' },
 
   // paint editor
   gradId: 0,

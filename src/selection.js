@@ -39,7 +39,9 @@ function drawGrid(ov, wrapRect) {
   try { m = S.svg.getScreenCTM(); } catch (e) { return; }
   if (!m) return;
   const stepPx = g.size * Math.hypot(m.a, m.b);
-  if (stepPx < 4) return;                    // too dense to be anything but noise
+  // Below about two pixels the lines merge into a solid wash. The step is
+  // derived from the document size now, so this almost never trips.
+  if (stepPx < 2) return;
 
   const [vx, vy, vw, vh] = (S.svg.getAttribute('viewBox') || '0 0 100 100')
     .trim().split(/[\s,]+/).map(Number);
@@ -55,7 +57,29 @@ function drawGrid(ov, wrapRect) {
   const path = document.createElementNS(NS, 'path');
   path.setAttribute('id', 'gridLines');
   path.setAttribute('d', d);
+  path.setAttribute('stroke', g.color);
+  path.setAttribute('stroke-opacity', g.opacity);
   ov.appendChild(path);
+}
+
+/* The page, drawn behind the artwork so its edges are always visible. A plain
+   div rather than anything inside the SVG, so it can never reach an export. */
+export function syncArtboard(wrapRect) {
+  const el = $('#artboard');
+  if (!el) return;
+  if (!S.svg || !S.artboard.show) { el.style.display = 'none'; return; }
+  let m;
+  try { m = S.svg.getScreenCTM(); } catch (e) { el.style.display = 'none'; return; }
+  if (!m) { el.style.display = 'none'; return; }
+  const vb = (S.svg.getAttribute('viewBox') || '0 0 100 100').trim().split(/[\s,]+/).map(Number);
+  const pt = (x, y) => ({ x: m.a * x + m.c * y + m.e, y: m.b * x + m.d * y + m.f });
+  const a = pt(vb[0], vb[1]), b = pt(vb[0] + vb[2], vb[1] + vb[3]);
+  el.style.display = 'block';
+  el.style.left = (Math.min(a.x, b.x) - wrapRect.x) + 'px';
+  el.style.top = (Math.min(a.y, b.y) - wrapRect.y) + 'px';
+  el.style.width = Math.abs(b.x - a.x) + 'px';
+  el.style.height = Math.abs(b.y - a.y) + 'px';
+  el.style.background = S.artboard.bg;
 }
 
 export function renderOverlay() {
@@ -63,6 +87,7 @@ export function renderOverlay() {
   if (!S.svg) return;
   const wrapRect = $('#stagewrap').getBoundingClientRect();
   ov.setAttribute('viewBox', `0 0 ${wrapRect.width} ${wrapRect.height}`);
+  syncArtboard(wrapRect);
   if (S.grid.show) drawGrid(ov, wrapRect);
   const draw = (rec, cls) => {
     if (!rec || !rec.node.isConnected) return;
@@ -430,5 +455,12 @@ export function bindStage() {
     openPaint(e.clientX, e.clientY);
   });
 
-  window.addEventListener('resize', () => renderOverlay());
+  // Resizing changes the on-screen scale, so the Grid panel's "one square is
+  // N px" readout goes stale. Debounced, because resize fires continuously.
+  let resizeTimer = null;
+  window.addEventListener('resize', () => {
+    renderOverlay();
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(renderInspector, 220);
+  });
 }

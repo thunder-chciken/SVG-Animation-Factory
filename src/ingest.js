@@ -56,6 +56,28 @@ export function mountSVG(src, name = 'untitled.svg') {
   // Restored markup arrives with its uids already baked in; keep the counter
   // above them so freshly split elements never reuse an id a clip points at.
   S.uid = Math.max(S.uid, maxUid());
+  const [, , vw, vh] = (svg.getAttribute('viewBox') || '0 0 100 100').trim().split(/[\s,]+/).map(Number);
+  S.grid.size = niceGridSize(vw, vh);
+  return true;
+}
+
+/* A grid step scaled to the artboard, rounded to a 1/2/5 figure so the
+   numbers stay readable. Aims for roughly 16 cells across the short side. */
+export function niceGridSize(w, h) {
+  const target = Math.max(1, Math.min(w, h) / 16);
+  const pow = Math.pow(10, Math.floor(Math.log10(target)));
+  const n = target / pow;
+  const step = n < 1.5 ? 1 : n < 3.5 ? 2 : n < 7.5 ? 5 : 10;
+  return Math.max(1, Math.round(step * pow));
+}
+
+/* Change the artboard without touching the artwork's coordinates. */
+export function resizeArtboard(w, h) {
+  if (!S.svg) return false;
+  const [x, y] = (S.svg.getAttribute('viewBox') || '0 0 0 0').trim().split(/[\s,]+/).map(Number);
+  S.svg.setAttribute('viewBox', `${x} ${y} ${Math.max(1, w)} ${Math.max(1, h)}`);
+  S.grid.size = niceGridSize(w, h);
+  markDirty();
   return true;
 }
 

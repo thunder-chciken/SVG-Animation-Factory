@@ -79,7 +79,14 @@ presets carry their own stagger, so they spread across split letters on click.
 
 **Align** — left / centre / right, top / middle / bottom, centre-both, and even
 distribution, relative to the selection or to the artboard. Plus a snapping grid in
-SVG user units, so it holds at any zoom, with an optional on-canvas overlay.
+SVG user units, so it holds at any zoom, with a colourable on-canvas overlay. The grid
+step is derived from the artboard whenever a document is opened, and the panel reports
+how many screen pixels one square currently is.
+
+**Document** — the page is drawn behind the artwork so its edges are always visible
+(editor-only; it never reaches an export), with its own colour. Resize the artboard by
+typing any size — `1920x1080`, `1280 x 720`, `1440, 900` — or pick a preset. Resizing
+reframes the page without moving a single element.
 
 **Navigate** — a Premiere-style zoom dropdown (Fit, 10% … 1600%) where percentages
 mean true 1:1, not CSS scale. `Home` puts the view back to fit and centred.
